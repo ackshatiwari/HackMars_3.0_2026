@@ -3,12 +3,18 @@ import cors from 'cors';
 import morgan from 'morgan';
 import "dotenv/config";
 
+// set up routers
+import authRouter from './routes/auth.js';
+
 const app = express();
 
 // Middleware
 app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
+app.use('/api/auth', authRouter);
+
+
 
 // Routes
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
