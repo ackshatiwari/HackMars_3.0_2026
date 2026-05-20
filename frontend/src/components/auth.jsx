@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import './auth.css'
+import '../styles/auth.css'
 
 function Auth() {
   const [isSignIn, setIsSignIn] = useState(true)
@@ -29,11 +29,39 @@ function Auth() {
     }
     const data = await res.json()
     console.log(data)
+
+    // locall storage set user data
+    localStorage.setItem('user', JSON.stringify(data.user))
+    window.location.reload()
   }
 
   const handleSignInSubmit = async (event) => {
     event.preventDefault()
+
     
+    // endpoint is /api/auth/signin
+    const res = await fetch('/api/auth/signin', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: event.target.email.value,
+        password: event.target.password.value,
+
+      }),
+    })
+    // extract error    
+    if (!res.ok) {
+      const errorData = await res.json()
+      console.error('Error:', errorData.error)
+      return
+    }
+
+    const data = await res.json()
+    console.log(data)
+    localStorage.setItem('user', JSON.stringify(data.user))
+    window.location.reload()
   }
 
   const handleToggle = () => {
