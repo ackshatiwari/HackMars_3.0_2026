@@ -1,105 +1,165 @@
 from ultralytics import YOLO
 import cv2
 import os
+import math
 
-cap = cv2.VideoCapture("python-service\\app\\input.mp4")
-os.makedirs("frames", exist_ok=True)
+# Globals filled by setup()
+model = None
+frames_dir = "frames"
 
-# delete existing frames
-for filename in os.listdir("frames"):
-    file_path = os.path.join("frames", filename)
-    if os.path.isfile(file_path):
-        os.remove(file_path)
-    
+suspicious_motion = []  
 
-count = 0
-saved = 0
 
-while True:
-    ret, frame = cap.read()
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    # timestamp = frame count / fps
-    timestamp = count / fps
+def setup(video_path="python-service\\app\\input.mp4", frames_directory="frames", frame_step=3, model_path="yolov8m-pose.pt"):
+    """Prepare frames and initialize the YOLO pose model.
 
-    if not ret:
-        break
+    This clears/creates `frames_directory`, extracts frames from `video_path`
+    every `frame_step` frames, and loads the YOLO model from `model_path`.
+    It sets module-level `model` and `frames_dir` so `detect_punches()` can use them.
+    """
+    global model, frames_dir
+    frames_dir = frames_directory
 
-    if count % 5 == 0:
-        cv2.imwrite(
-            f"frames/frame_{timestamp:.2f}.jpg",
-            frame
-        )
-        saved += 1
+    os.makedirs(frames_dir, exist_ok=True)
 
-    count += 1
+    # delete existing frames
+    for filename in os.listdir(frames_dir):
+        file_path = os.path.join(frames_dir, filename)
+        if os.path.isfile(file_path):
+            os.remove(file_path)
 
-cap.release()
+    if not os.path.exists(video_path):
+        print(f"Warning: video path '{video_path}' does not exist. Skipping frame extraction.")
+    else:
+        cap = cv2.VideoCapture(video_path)
+        if not cap.isOpened():
+            print(f"Warning: failed to open video '{video_path}'. Skipping frame extraction.")
+        else:
+            count = 0
+            while True:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                fps = cap.get(cv2.CAP_PROP_FPS) or 30
+                timestamp = count / fps if fps else count
 
-# extract the wrist keypoint and detect if the wrist moved at a fast rate, then it will be considered a punch or strike
-model = YOLO("yolov8m-pose.pt")
+                if count % frame_step == 0:
+                    out_path = os.path.join(frames_dir, f"frame_{timestamp:.2f}.jpg")
+                    cv2.imwrite(out_path, frame)
 
-latest_left_wrist_position = None
-latest_right_wrist_position = None
+                count += 1
 
-# wrist movement threshold must be width / 10 of the frame
+            cap.release()
+
+    # load model
+    model = YOLO(model_path)
+
+
+# Robust multi-person punch detection that tolerates people leaving the frame.
 def detect_punches():
-    for filename in os.listdir("frames"):
+    # prev_people: list of dicts {id, left: (x,y), right: (x,y), missed}
+    prev_people = []
+    next_id = 0
 
-        image_path = os.path.join("frames", filename)
+    # process frames in order
+    frames = sorted([f for f in os.listdir(frames_dir) if f.endswith(".jpg")])
+    for filename in frames:
+        image_path = os.path.join(frames_dir, filename)
         image = cv2.imread(image_path)
+        if image is None:
+            continue
         width = image.shape[1]
-
         wrist_movement_threshold = width / 10
 
-        if filename.endswith(".jpg"):
-            image_path = os.path.join("frames", filename)
-            results = model(image_path)
-            keypoints = results[0].keypoints.xy
+        results = model(image)
+        # keypoints may be None or empty when no person detected
 
-            # extract keypoint number 9 and 10 which are the left and right wrist keypoints
+        try:
+            kps = results[0].keypoints.xy
+        except Exception:
+            kps = None
 
-            left_wrist = keypoints[0][8]
-            right_wrist = keypoints[0][9]
+        if kps is None or len(kps) == 0:
+            # no detections: mark previous people as missed
+            for p in prev_people:
+                p['missed'] += 1
+            # drop people missed for too long
+            prev_people = [p for p in prev_people if p['missed'] < 5]
+            continue
 
-            print(f"Left wrist: {left_wrist}, Right wrist: {right_wrist}")
+        new_prev = []
+        used_prev_idxs = set()
 
-            # calculate the movement of the left wrist compared to the last position
-            if latest_left_wrist_position is not None:
+        for person_kp in kps:
+            # ensure the wrist keypoints exist for this person
+            if len(person_kp) <= 10:
+                # not enough keypoints detected for this person, skip
+                continue
+            left = tuple(person_kp[9])
+            right = tuple(person_kp[10])
 
-                left_wrist_movement = ((left_wrist[0] - latest_left_wrist_position[0]) ** 2 + (left_wrist[1] - latest_left_wrist_position[1]) ** 2) ** 0.5
+            # match to previous person by nearest left-wrist (simple heuristic)
+            best_idx = None
+            best_dist = float('inf')
+            for i, p in enumerate(prev_people):
+                d = math.hypot(left[0] - p['left'][0], left[1] - p['left'][1])
+                if d < best_dist:
+                    best_dist = d
+                    best_idx = i
 
-                print(f"Left wrist movement: {left_wrist_movement}")
+            if best_idx is None or best_dist > width * 0.5:
+                # new person
+                pid = next_id
+                next_id += 1
+                new_prev.append({'id': pid, 'left': left, 'right': right, 'missed': 0})
+            else:
+                p = prev_people[best_idx]
+                left_m = math.hypot(left[0] - p['left'][0], left[1] - p['left'][1])
+                right_m = math.hypot(right[0] - p['right'][0], right[1] - p['right'][1])
 
-                if left_wrist_movement > wrist_movement_threshold:
-                    print("Left wrist moved fast, possible punch or strike detected!")
-                    left_wrist_movement = 0
-                    right_wrist_movement = 0
+                if left_m > wrist_movement_threshold:
+                    print(f"Person {p['id']}: left wrist moved {left_m:.1f} -> possible punch")
+
+                    if filename not in suspicious_motion:
+                        # append the type (always high_motion_event), the person id, the frame (current, previous, and next frame for context), and the movement distance
+                        suspicious_motion.append({
+                            'type': 'high_motion_event',
+                            'person_id': p['id'],
+                            'frames': [f for f in frames if abs(float(f.split('_')[1][:-4]) - float(filename.split('_')[1][:-4])) <= 0.5],
+                            'movement': left_m
+                        })
+
+                if right_m > wrist_movement_threshold:
+                    print(f"Person {p['id']}: right wrist moved {right_m:.1f} -> possible punch")
+                    if filename not in suspicious_motion:
+                        suspicious_motion.append({
+                            'type': 'high_motion_event',
+                            'person_id': p['id'],
+                            'frames': [f for f in frames if abs(float(f.split('_')[1][:-4]) - float(filename.split('_')[1][:-4])) <= 0.5],
+                            'movement': right_m
+                        })
+
+                new_prev.append({'id': p['id'], 'left': left, 'right': right, 'missed': 0})
+                used_prev_idxs.add(best_idx)
+
+        # carry over unmatched previous people (but increase missed)
+        for i, p in enumerate(prev_people):
+            if i not in used_prev_idxs:
+                p['missed'] += 1
+                if p['missed'] < 5:
+                    new_prev.append(p)
+
+        prev_people = new_prev
 
 
-            # calculate the movement of the right wrist compared to the last position
-            if latest_right_wrist_position is not None:
+def get_suspicious_motion():
+    return suspicious_motion
 
-                right_wrist_movement = ((right_wrist[0] - latest_right_wrist_position[0]) ** 2 + (right_wrist[1] - latest_right_wrist_position[1]) ** 2) ** 0.5
-
-                print(f"Right wrist movement: {right_wrist_movement}")
-
-                if right_wrist_movement > wrist_movement_threshold:
-                    print("Right wrist moved fast, possible punch or strike detected!")
-                    left_wrist_movement = 0
-                    right_wrist_movement = 0
-
-            latest_left_wrist_position = left_wrist
-            latest_right_wrist_position = right_wrist
+def main(video_path="python-service\\app\\input.mp4", frames_directory="frames", frame_step=3, model_path="yolov8m-pose.pt"):
+    setup(video_path=video_path, frames_directory=frames_directory, frame_step=frame_step, model_path=model_path)
+    detect_punches()
 
 
 
-
-"""
-
-results = model("python-service/app/image.jpg")
-
-# extract the keypoints from the results
-
-keypoints = results[0].keypoints
-print(keypoints)
-"""
+if __name__ == "__main__":
+    main()
