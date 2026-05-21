@@ -22,10 +22,10 @@ def setup(video_path="python-service\\app\\input.mp4", frames_directory="frames"
 
     os.makedirs(frames_dir, exist_ok=True)
 
-    # delete existing frames
+    # delete existing frames (except for .gitignore files)
     for filename in os.listdir(frames_dir):
         file_path = os.path.join(frames_dir, filename)
-        if os.path.isfile(file_path):
+        if os.path.isfile(file_path) and filename != ".gitignore":
             os.remove(file_path)
 
     if not os.path.exists(video_path):
