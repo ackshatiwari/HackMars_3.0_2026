@@ -52,26 +52,39 @@ def setup(video_path="python-service\\app\\input.mp4", frames_directory="frames"
             cap.release()
 
     # load model
+    
     model = YOLO(model_path)
+    # return model and frames dir for explicit usage
+    return model, frames_dir
 
 
 # Robust multi-person punch detection that tolerates people leaving the frame.
-def detect_punches():
+def detect_punches(model_arg=None, frames_directory=None, missed_tolerance=5):
     # prev_people: list of dicts {id, left: (x,y), right: (x,y), missed}
     prev_people = []
     next_id = 0
 
+    # reset events from previous runs
+    suspicious_motion.clear()
+
+    # choose model and frames dir
+    mdl = model_arg if model_arg is not None else model
+    fd = frames_directory if frames_directory is not None else frames_dir
+
+    if mdl is None:
+        raise RuntimeError("Model not initialized. Call setup() first or pass model_arg.")
+
     # process frames in order
-    frames = sorted([f for f in os.listdir(frames_dir) if f.endswith(".jpg")])
+    frames = sorted([f for f in os.listdir(fd) if f.endswith(".jpg")])
     for filename in frames:
-        image_path = os.path.join(frames_dir, filename)
+        image_path = os.path.join(fd, filename)
         image = cv2.imread(image_path)
         if image is None:
             continue
         width = image.shape[1]
         wrist_movement_threshold = width / 10
 
-        results = model(image)
+        results = mdl(image)
         # keypoints may be None or empty when no person detected
 
         try:
@@ -84,7 +97,7 @@ def detect_punches():
             for p in prev_people:
                 p['missed'] += 1
             # drop people missed for too long
-            prev_people = [p for p in prev_people if p['missed'] < 5]
+            prev_people = [p for p in prev_people if p['missed'] < missed_tolerance]
             continue
 
         new_prev = []
@@ -120,24 +133,26 @@ def detect_punches():
                 if left_m > wrist_movement_threshold:
                     print(f"Person {p['id']}: left wrist moved {left_m:.1f} -> possible punch")
 
-                    if filename not in suspicious_motion:
-                        # append the type (always high_motion_event), the person id, the frame (current, previous, and next frame for context), and the movement distance
-                        suspicious_motion.append({
-                            'type': 'high_motion_event',
-                            'person_id': p['id'],
-                            'frames': [f for f in frames if abs(float(f.split('_')[1][:-4]) - float(filename.split('_')[1][:-4])) <= 0.5],
-                            'movement': left_m
-                        })
+                    # append a structured event for this high-motion occurrence
+                    suspicious_motion.append({
+                        'type': 'high_motion_event',
+                        'person_id': p['id'],
+                        'frame': filename,
+                        'frames_context': [f for f in frames if abs(float(f.split('_')[1][:-4]) - float(filename.split('_')[1][:-4])) <= 0.5],
+                        'side': 'left',
+                        'movement': float(left_m)
+                    })
 
                 if right_m > wrist_movement_threshold:
                     print(f"Person {p['id']}: right wrist moved {right_m:.1f} -> possible punch")
-                    if filename not in suspicious_motion:
-                        suspicious_motion.append({
-                            'type': 'high_motion_event',
-                            'person_id': p['id'],
-                            'frames': [f for f in frames if abs(float(f.split('_')[1][:-4]) - float(filename.split('_')[1][:-4])) <= 0.5],
-                            'movement': right_m
-                        })
+                    suspicious_motion.append({
+                        'type': 'high_motion_event',
+                        'person_id': p['id'],
+                        'frame': filename,
+                        'frames_context': [f for f in frames if abs(float(f.split('_')[1][:-4]) - float(filename.split('_')[1][:-4])) <= 0.5],
+                        'side': 'right',
+                        'movement': float(right_m)
+                    })
 
                 new_prev.append({'id': p['id'], 'left': left, 'right': right, 'missed': 0})
                 used_prev_idxs.add(best_idx)
@@ -146,18 +161,23 @@ def detect_punches():
         for i, p in enumerate(prev_people):
             if i not in used_prev_idxs:
                 p['missed'] += 1
-                if p['missed'] < 5:
+                if p['missed'] < missed_tolerance:
                     new_prev.append(p)
 
         prev_people = new_prev
 
+    return suspicious_motion
 
 def get_suspicious_motion():
     return suspicious_motion
 
 def main(video_path="python-service\\app\\input.mp4", frames_directory="frames", frame_step=3, model_path="yolov8m-pose.pt"):
-    setup(video_path=video_path, frames_directory=frames_directory, frame_step=frame_step, model_path=model_path)
-    detect_punches()
+    mdl, fd = setup(video_path=video_path, frames_directory=frames_directory, frame_step=frame_step, model_path=model_path)
+    results = detect_punches(model_arg=mdl, frames_directory=fd)
+    print(f"Detections: {len(results)} events")
+    for r in results:
+        print(r)
+    return results
 
 
 
