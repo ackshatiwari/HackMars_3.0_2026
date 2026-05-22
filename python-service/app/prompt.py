@@ -39,6 +39,7 @@ Evaluation Guidelines:
 - Avoid over-classifying ambiguous situations as abuse.
 - If evidence is limited or inconclusive, prefer the less severe classification while noting uncertainty.
 - Focus on observable behavior only. Do not speculate beyond visible evidence.
+- If you cannot confidently classify, return classification = 'unknown' with confidence = 0.00 and a brief reason.
 
 IMPORTANT: Output MUST be valid JSON only — no markdown, no code fences, no commentary, 
 no explanations, no additional text. The JSON that you will return must strictly follow this schema:
@@ -46,7 +47,7 @@ no explanations, no additional text. The JSON that you will return must strictly
 \n\n
 
 {
-  "classification": "normal_caregiving_assistance | accidental_movement | aggressive_handling | potential_physical_abuse",
+  "classification": "normal_caregiving_assistance | accidental_movement | aggressive_handling | potential_physical_abuse | unknown",
   "confidence": 0.0,
   "reason": "Concise evidence-based explanation referencing observable behaviors."
 }
