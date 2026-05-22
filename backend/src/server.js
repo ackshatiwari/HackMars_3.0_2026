@@ -5,6 +5,7 @@ import "dotenv/config";
 
 // set up routers
 import authRouter from './routes/auth.js';
+import footageRouter from './routes/footage.js';
 
 const app = express();
 
@@ -13,6 +14,7 @@ app.use(cors());
 app.use(morgan('dev'));
 app.use(express.json());
 app.use('/api/auth', authRouter);
+app.use('/api/footage', footageRouter);
 
 
 

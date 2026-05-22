@@ -17,9 +17,18 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "morgan": "^1.10.1"
+    "morgan": "^1.10.1",
+    "multer": "^2.1.1",
+    "node-fetch": "^3.3.2",
+    "form-data": "^4.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"
+  }
+  ,
+  "dependenciesMeta": {
+    "multer": {
+      "optional": true
+    }
   }
 }

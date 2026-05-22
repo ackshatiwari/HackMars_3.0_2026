@@ -9,7 +9,7 @@
 from localStorage user data, and display it on the profile dashboard. 
 */
 import React, { useState } from 'react'
-import MainPage from "./main_page"
+import MainPage from "./main_page/main_page"
 import '../styles/profile_dashboard.css'
 
 function ProfileDashboard() {
