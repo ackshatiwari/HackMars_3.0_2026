@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import UploadFootage from './upload_footage'
+import RecordVideo from './record_video'
 
 function MainPage() {
     const [loadUploadFootage, setLoadUploadFootage] = useState(false)
@@ -8,12 +9,14 @@ function MainPage() {
         // Logic to handle footage upload
         console.log('Upload footage button clicked')
         setLoadUploadFootage(true)
+        setLoadRecordVideo(false)
     }
 
     const recordVideo = () => {
         // Logic to handle video recording
         console.log('Record video button clicked')
         setLoadRecordVideo(true)
+        setLoadUploadFootage(false)
     }
 
 
@@ -32,6 +35,7 @@ function MainPage() {
                 </>
             )}
             {loadUploadFootage && <UploadFootage />}
+            {loadRecordVideo && <RecordVideo />}
 
 		</div>
             

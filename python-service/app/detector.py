@@ -2,15 +2,17 @@ from ultralytics import YOLO
 import cv2
 import os
 import math
+from pathlib import Path
 
 # Globals filled by setup()
 model = None
-frames_dir = "frames"
+frames_dir = str(Path(__file__).resolve().parent.parent / "frames")
+model_path_default = str(Path(__file__).resolve().parent.parent / "yolov8m-pose.pt")
 
 suspicious_motion = []  
 
 
-def setup(video_path="python-service\\app\\input.mp4", frames_directory="frames", frame_step=3, model_path="yolov8m-pose.pt"):
+def setup(video_path="python-service\\app\\input.mp4", frames_directory="frames", frame_step=3, model_path=model_path_default):
     """Prepare frames and initialize the YOLO pose model.
 
     This clears/creates `frames_directory`, extracts frames from `video_path`
@@ -171,12 +173,39 @@ def detect_punches(model_arg=None, frames_directory=None, missed_tolerance=5):
 def get_suspicious_motion():
     return suspicious_motion
 
-def main(video_path="python-service\\app\\input.mp4", frames_directory="frames", frame_step=3, model_path="yolov8m-pose.pt"):
+def main(video_path="python-service\\app\\input.mp4", frames_directory="frames", frame_step=3, model_path=model_path_default):
     mdl, fd = setup(video_path=video_path, frames_directory=frames_directory, frame_step=frame_step, model_path=model_path)
     results = detect_punches(model_arg=mdl, frames_directory=fd)
     print(f"Detections: {len(results)} events")
     for r in results:
         print(r)
+    return results
+
+
+# this method will receive an array of 4 frames: current frame, 1 previous frame, and 2 subsequent frames for context. 
+# It will run the model on these frames and return any detected events or anomalies.
+
+def live_video_analysis(frames=[], frames_directory=None):
+    global frames_dir
+    if frames_directory is not None:
+        frames_dir = frames_directory
+
+    os.makedirs(frames_dir, exist_ok=True)
+
+    if model is None:
+        setup(frames_directory=frames_dir, model_path=model_path_default)
+
+    # delete existing frames (except for .gitignore files)
+    for filename in os.listdir(frames_dir):
+        file_path = os.path.join(frames_dir, filename)
+        if os.path.isfile(file_path) and filename != ".gitignore":
+            os.remove(file_path)
+    # save the incoming frames using the same numeric timestamp pattern detect_punches() parses
+    for i, frame in enumerate(frames):
+        out_path = os.path.join(frames_dir, f"frame_{i / 10:.2f}.jpg")
+        cv2.imwrite(out_path, frame)
+    # run detection on the frames
+    results = detect_punches(frames_directory=frames_dir)
     return results
 
 

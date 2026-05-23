@@ -1,8 +1,10 @@
 """CLI entry for the detector processor."""
-from .detector import main as detector_main, get_suspicious_motion
+from .detector import main as detector_main, get_suspicious_motion, live_video_analysis
 from .gemini import gemini_caregiver_abuse_analysis as gemini_analysis
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+import cv2
+import numpy as np
 
 # env package
 from dotenv import load_dotenv
@@ -67,10 +69,47 @@ async def pass_to_gemini():
     suspicious_motion = get_suspicious_motion()
     # Pass the suspicious_motion data to Gemini and return its analysis
     try:
-        analysis = gemini_analysis(suspicious_motion)
+        analysis = gemini_analysis(suspicious_motion, frames_directory=FRAME_DIRECTORY)
     except Exception as e:
         # return structured error
         raise HTTPException(status_code=500, detail={"error": str(e)})
 
     return {"suspicious_motion": suspicious_motion, "gemini_analysis": analysis}
 
+
+@app.post("/analyze-frame/")
+async def analyze_frame(
+    frame: UploadFile = File(...),
+    frame_before: UploadFile | None = File(None),
+    frame_after_1: UploadFile | None = File(None),
+    frame_after_2: UploadFile | None = File(None),
+):
+    async def decode_image(upload_file: UploadFile):
+
+        contents = await upload_file.read()
+        image_array = np.frombuffer(contents, dtype=np.uint8)
+        image = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+
+        if image is None:
+            raise HTTPException(status_code=400, detail={"error": f"Could not decode image: {upload_file.filename}"})
+        return image
+
+    frames = []
+
+    if frame_before is not None:
+        frames.append(await decode_image(frame_before))
+    frames.append(await decode_image(frame))
+
+    if frame_after_1 is not None:
+        frames.append(await decode_image(frame_after_1))
+        
+    if frame_after_2 is not None:
+        frames.append(await decode_image(frame_after_2))
+
+    suspicious_motion = live_video_analysis(frames=frames, frames_directory=FRAME_DIRECTORY)
+    try:
+        analysis = gemini_analysis(suspicious_motion, frames_directory=FRAME_DIRECTORY)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail={"error": str(e)})
+    return {"suspicious_motion": suspicious_motion, "gemini_analysis": analysis}
+    

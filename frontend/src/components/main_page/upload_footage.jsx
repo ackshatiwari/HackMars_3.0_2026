@@ -20,18 +20,10 @@ export default function UploadFootage() {
             } catch (e) {
                 errorBody = await res.text().catch(() => 'Unable to read response')
             }
-            console.error('Upload failed', res.status, errorBody)
+            console.error('Upload failed', errorBody)
             return
         }
         console.log('Upload succeeded')
-        // After a successful upload, ask backend to run Gemini analysis and log the results
-        try {
-            const a = await fetch('/api/footage/analyze')
-            const analysis = await a.json().catch(() => null)
-            console.log('Gemini analysis result:', analysis)
-        } catch (e) {
-            console.error('Failed to fetch analysis:', e)
-        }
 
     }
         
