@@ -7,7 +7,7 @@ from pathlib import Path
 # Globals filled by setup()
 model = None
 frames_dir = str(Path(__file__).resolve().parent.parent / "frames")
-model_path_default = str(Path(__file__).resolve().parent.parent / "yolov8m-pose.pt")
+model_path_default = str(Path(__file__).resolve().parent.parent / "yolov8n-pose.pt")
 
 suspicious_motion = []  
 
@@ -58,6 +58,15 @@ def setup(video_path="python-service\\app\\input.mp4", frames_directory="frames"
     model = YOLO(model_path)
     # return model and frames dir for explicit usage
     return model, frames_dir
+
+
+def ensure_model_loaded(model_path: str | None = None):
+    """Ensure the global `model` is loaded. Safe to call multiple times."""
+    global model
+    if model is None:
+        mp = model_path if model_path is not None else model_path_default
+        model = YOLO(mp)
+    return model
 
 
 # Robust multi-person punch detection that tolerates people leaving the frame.
@@ -133,7 +142,7 @@ def detect_punches(model_arg=None, frames_directory=None, missed_tolerance=5):
                 right_m = math.hypot(right[0] - p['right'][0], right[1] - p['right'][1])
 
                 if left_m > wrist_movement_threshold:
-                    print(f"Person {p['id']}: left wrist moved {left_m:.1f} -> possible punch")
+                    # print(f"Person {p['id']}: left wrist moved {left_m:.1f} -> possible punch")
 
                     # append a structured event for this high-motion occurrence
                     suspicious_motion.append({
@@ -146,7 +155,7 @@ def detect_punches(model_arg=None, frames_directory=None, missed_tolerance=5):
                     })
 
                 if right_m > wrist_movement_threshold:
-                    print(f"Person {p['id']}: right wrist moved {right_m:.1f} -> possible punch")
+                    # ` print(f"Person {p['id']}: right wrist moved {right_m:.1f} -> possible punch")
                     suspicious_motion.append({
                         'type': 'high_motion_event',
                         'person_id': p['id'],
@@ -176,9 +185,10 @@ def get_suspicious_motion():
 def main(video_path="python-service\\app\\input.mp4", frames_directory="frames", frame_step=3, model_path=model_path_default):
     mdl, fd = setup(video_path=video_path, frames_directory=frames_directory, frame_step=frame_step, model_path=model_path)
     results = detect_punches(model_arg=mdl, frames_directory=fd)
-    print(f"Detections: {len(results)} events")
+    # print(f"Detections: {len(results)} events")
     for r in results:
-        print(r)
+        # print(r)
+        pass
     return results
 
 
@@ -191,19 +201,25 @@ def live_video_analysis(frames=[], frames_directory=None):
         frames_dir = frames_directory
 
     os.makedirs(frames_dir, exist_ok=True)
-
-    if model is None:
-        setup(frames_directory=frames_dir, model_path=model_path_default)
+    # Ensure directory exists
 
     # delete existing frames (except for .gitignore files)
     for filename in os.listdir(frames_dir):
         file_path = os.path.join(frames_dir, filename)
         if os.path.isfile(file_path) and filename != ".gitignore":
             os.remove(file_path)
-    # save the incoming frames using the same numeric timestamp pattern detect_punches() parses
+
+    # save the incoming frames immediately so they appear in the frames directory
     for i, frame in enumerate(frames):
         out_path = os.path.join(frames_dir, f"frame_{i / 10:.2f}.jpg")
         cv2.imwrite(out_path, frame)
+
+    # load model lazily after writing frames so the files show up quickly on disk
+    if model is None:
+        # load model without clearing frames_dir
+        load_model = YOLO(model_path_default)
+        globals()['model'] = load_model
+
     # run detection on the frames
     results = detect_punches(frames_directory=frames_dir)
     return results

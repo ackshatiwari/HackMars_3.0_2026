@@ -10,6 +10,12 @@ let frameNumber = 0
 
 const upload = multer({ dest: 'uploads/' })
 
+const getPythonServiceUrl = () => process.env.PYTHON_SERVICE_URL || 'http://127.0.0.1:8000'
+
+const isConnectionRefused = (err) => {
+    return err && (err.code === 'ECONNREFUSED' || /ECONNREFUSED/i.test(err.message || ''))
+}
+
 // POST /api/footage/upload_footage
 // Accepts multipart file upload from frontend and forwards it to the
 // Python FastAPI service at /upload-video/ for processing.
@@ -18,7 +24,7 @@ router.post('/upload_footage', upload.single('file'), async (req, res) => {
         console.log('upload_footage: req.file=', req.file && { originalname: req.file.originalname, path: req.file.path, size: req.file.size })
         if (!req.file) return res.status(400).json({ error: 'No file uploaded. Field name must be `file` in the form.' })
 
-        const pythonUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000'
+        const pythonUrl = getPythonServiceUrl()
 
         const form = new FormData()
         const readStream = fs.createReadStream(req.file.path)
@@ -53,8 +59,7 @@ router.post('/upload_footage', upload.single('file'), async (req, res) => {
 router.post('/parse_live_video_frame', upload.fields([
     { name: 'frame_before', maxCount: 1 },
     { name: 'frame', maxCount: 1 },
-    { name: 'frame_after_1', maxCount: 1 },
-    { name: 'frame_after_2', maxCount: 1 },
+    { name: 'frame_after', maxCount: 1 },
 ]), async (req, res) => {
 
     try {
@@ -64,7 +69,7 @@ router.post('/parse_live_video_frame', upload.fields([
 
         if (!uploadedFiles.frame || !uploadedFiles.frame[0]) return res.status(400).json({ error: 'No frame uploaded. Field name must be `frame` in the form.' })
         const uploadsDir = path.resolve(process.cwd(), 'uploads')
-        const pythonUrl = process.env.PYTHON_SERVICE_URL || 'http://localhost:8000'
+        const pythonUrl = getPythonServiceUrl()
 
         const now = new Date()
         const pad = (value) => String(value).padStart(2, '0')
@@ -95,9 +100,7 @@ router.post('/parse_live_video_frame', upload.fields([
 
         const previousFramePath = saveUploadedFrame(uploadedFiles.frame_before && uploadedFiles.frame_before[0], `${timestamp}-${currentFrameNumber - 1}.jpg`)
         const currentFramePath = saveUploadedFrame(uploadedFiles.frame[0], currentFileName)
-        const nextFramePath1 = saveUploadedFrame(uploadedFiles.frame_after_1 && uploadedFiles.frame_after_1[0], `${timestamp}-${currentFrameNumber + 1}.jpg`)
-        const nextFramePath2 = saveUploadedFrame(uploadedFiles.frame_after_2 && uploadedFiles.frame_after_2[0], `${timestamp}-${currentFrameNumber + 2}.jpg`)
-
+        const nextFramePath = saveUploadedFrame(uploadedFiles.frame_after && uploadedFiles.frame_after[0], `${timestamp}-${currentFrameNumber + 1}.jpg`)
         const form = new FormData()
         const appendIfExists = (filePath, fieldName) => {
             if (!filePath) return
@@ -106,8 +109,7 @@ router.post('/parse_live_video_frame', upload.fields([
 
         appendIfExists(previousFramePath, 'frame_before')
         appendIfExists(currentFramePath, 'frame')
-        appendIfExists(nextFramePath1, 'frame_after_1')
-        appendIfExists(nextFramePath2, 'frame_after_2')
+        appendIfExists(nextFramePath, 'frame_after')
 
         const resp = await fetch(`${pythonUrl}/analyze-frame/`, {
             method: 'POST',
@@ -129,6 +131,13 @@ router.post('/parse_live_video_frame', upload.fields([
         return res.status(resp.status).json(data)
     } catch (err) {
         console.error('Error forwarding frame window to python service:', err)
+        if (isConnectionRefused(err)) {
+            return res.status(503).json({
+                error: 'Python service is not reachable',
+                pythonUrl: getPythonServiceUrl(),
+                details: 'Start Uvicorn and keep it running: uvicorn app.main:app --app-dir python-service --reload --port 8000',
+            })
+        }
         return res.status(500).json({ error: 'Failed to forward frame window to python service', details: err.message })
     }
 
