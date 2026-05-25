@@ -41,6 +41,52 @@ router.post('/signin', async (req, res) => {
         res.status(500).json({ error: error.message })
     }
 })
-    
+
+router.post('/update_notification_preferences', async (req, res) => {
+    const { email, phone_number_for_notifications, email_for_notifications } = req.body
+
+    try {
+        // the columns to be updated, emergency_phone_contacts, and 
+        // emergency_email_contacts are jsonB, so we need to append 
+        // the new contact to the existing array
+        
+        const existing_phone_json = await sql`
+            SELECT emergency_phone_contacts FROM public.hackmars_users WHERE email = ${email}
+        `
+        const existing_email_json = await sql`
+            SELECT emergency_email_contacts FROM public.hackmars_users WHERE email = ${email}
+        `
+
+        const existing_phone_contacts_raw = existing_phone_json[0]?.emergency_phone_contacts || []
+        const existing_email_contacts_raw = existing_email_json[0]?.emergency_email_contacts || []
+
+        const existing_phone_contacts = Array.isArray(existing_phone_contacts_raw)
+            ? existing_phone_contacts_raw
+            : (existing_phone_contacts_raw ? [existing_phone_contacts_raw] : [])
+
+        const existing_email_contacts = Array.isArray(existing_email_contacts_raw)
+            ? existing_email_contacts_raw
+            : (existing_email_contacts_raw ? [existing_email_contacts_raw] : [])
+
+        // append the new contact to the existing array
+        const updated_phone_contacts = phone_number_for_notifications ? [...existing_phone_contacts, phone_number_for_notifications] : existing_phone_contacts
+        const updated_email_contacts = email_for_notifications ? [...existing_email_contacts, email_for_notifications] : existing_email_contacts
+
+        // update the user's notification preferences
+        await sql`
+            UPDATE public.hackmars_users 
+            SET emergency_phone_contacts = ${JSON.stringify(updated_phone_contacts)}, emergency_email_contacts = ${JSON.stringify(updated_email_contacts)}
+            WHERE email = ${email}
+        `
+
+        res.status(200).json({
+            message: 'Notification preferences updated successfully',
+            emergency_phone_contacts: updated_phone_contacts,
+            emergency_email_contacts: updated_email_contacts,
+        })
+    } catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+})
 
 export default router
