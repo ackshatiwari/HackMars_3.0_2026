@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
+import '../../styles/record_video.css'
 
 export default function RecordVideo() {
     const pythonServiceUrl = import.meta.env.VITE_PYTHON_SERVICE_URL || 'http://localhost:8000'
@@ -10,6 +11,60 @@ export default function RecordVideo() {
     const analysisInFlightRef = useRef(false)
     const [isStreaming, setIsStreaming] = useState(false)
     const [geminiResults, setGeminiResults] = useState([])
+    const [riskFilter, setRiskFilter] = useState('all') // 'all' | 'low' | 'high' | 'critical'
+
+
+    var color_to_movement = new Map()
+    color_to_movement.set('normal_caregiving_assistance', 'green')
+    color_to_movement.set('accidental_movement', 'yellow')
+    color_to_movement.set('aggressive_handling', 'orange')
+    color_to_movement.set('potential_physical_abuse', 'red')
+
+    const extractJsonText = (text) => {
+        if (!text) return ''
+        if (typeof text !== 'string') return JSON.stringify(text, null, 2)
+
+        const jsonMatch = /```json\s*([\s\S]*?)\s*```/i.exec(text)
+        if (jsonMatch?.[1]) {
+            return jsonMatch[1].trim()
+        }
+
+        const trimmed = text.trim()
+        try {
+            return JSON.stringify(JSON.parse(trimmed), null, 2)
+        } catch (e) {
+            return trimmed
+        }
+    }
+
+    // Minimal helper: extract a short classification from the Gemini result
+    const extractClassification = (result) => {
+        if (!result) return null
+        const payload = result.text
+        if (!payload) return null
+
+        if (typeof payload === 'object') return payload.classification || null
+
+        const jsonText = extractJsonText(payload)
+        try {
+            const parsed = JSON.parse(jsonText)
+            if (parsed && typeof parsed === 'object') return parsed.classification || null
+        } catch (e) {
+            return null
+        }
+
+        return null
+    }
+
+    const classificationToRisk = (classification) => {
+        if (!classification) return 'unknown'
+        const c = classification.toLowerCase()
+        if (c === 'normal_caregiving_assistance' || c === 'accidental_movement') return 'low'
+        if (c === 'aggressive_handling') return 'high'
+        if (c === 'potential_physical_abuse') return 'critical'
+        return 'unknown'
+    }
+
 
     const upsertGeminiResult = (jobId, text) => {
         setGeminiResults((prev) => {
@@ -19,17 +74,15 @@ export default function RecordVideo() {
     }
 
     const formatGeminiResult = (j) => {
-        const status = j?.status || 'unknown'
-        const stage = j?.stage ? ` | stage: ${j.stage}` : ''
-        const elapsed = typeof j?.elapsed_ms === 'number' ? ` | elapsed: ${j.elapsed_ms}ms` : ''
-        const error = j?.last_error ? ` | error: ${j.last_error}` : ''
-
         const perFrame = j?.gemini_analysis?.per_frame || []
-        const summary = perFrame
-            .map((item) => `${item.frame || 'unknown'} | ${item.side || 'unknown'} | ${item.analysis || 'no analysis'}`)
-            .join(' || ')
+        const primary = perFrame[0] || {}
+        const jsonText = extractJsonText(primary.analysis || '')
 
-        return `${status}${stage}${elapsed}${error}${summary ? ` | ${summary}` : ''}`
+        return {
+            text: jsonText,
+            elapsedMs: typeof j?.elapsed_ms === 'number' ? j.elapsed_ms : (typeof primary?.gemini_elapsed_ms === 'number' ? primary.gemini_elapsed_ms : null),
+            classification: primary?.classification || null,
+        }
     }
 
     // Poll a job id until it's no longer pending, then update results
@@ -154,11 +207,12 @@ export default function RecordVideo() {
                 const jobId = data?.job_id
                 if (!jobId) {
                     const perFrame = data?.gemini_analysis?.per_frame || []
-                    const summary = perFrame
-                        .map((item) => `${item.frame || 'unknown'} | ${item.side || 'unknown'} | ${item.analysis || 'no analysis'}`)
-                        .join(' || ')
-
-                    upsertGeminiResult(`local-${Date.now()}`, summary || JSON.stringify(data?.gemini_analysis || data))
+                    const primary = perFrame[0] || {}
+                    upsertGeminiResult(`local-${Date.now()}`, {
+                        text: extractJsonText(primary.analysis || JSON.stringify(data?.gemini_analysis || data)),
+                        elapsedMs: typeof data?.elapsed_ms === 'number' ? data.elapsed_ms : (typeof primary?.gemini_elapsed_ms === 'number' ? primary.gemini_elapsed_ms : null),
+                        classification: primary?.classification || null,
+                    })
                 } else {
                     // show pending immediately and poll in background
                     analysisInFlightRef.current = true
@@ -179,31 +233,76 @@ export default function RecordVideo() {
     useEffect(() => {
         if (!isStreaming) return
 
-        const intervalId = setInterval(captureFrame, 500)
+        const intervalId = setInterval(captureFrame, 200)
 
 
         return () => clearInterval(intervalId)
     }, [isStreaming])
 
     return (
-        <div>
-            <h2>Webcam Preview</h2>
-            <div id="webcam-container">
-                <video ref={videoRef} autoPlay muted playsInline />
-                <canvas ref={canvasRef} style={{ display: 'none' }} />
+        <>
+            <div>
+                <h2>Live Video Analysis</h2>
             </div>
-            <button type="button" onClick={startWebcam} disabled={isStreaming}>
-                Start
-            </button>
-            <button type="button" onClick={stopWebcam} disabled={!isStreaming}>
-                Stop
-            </button>
-            <p>Gemini results:</p>
-            <ul>
-                {geminiResults.map((result) => (
-                    <li key={result.id}>{result.text}</li>
-                ))}
-            </ul>
-        </div>
+
+            <div className='flex-container'>
+                <div className='container-webcam'>
+                    <div id="webcam-container">
+                        <video ref={videoRef} id="webcam" autoPlay muted playsInline />
+                        <canvas ref={canvasRef} style={{ display: 'none' }} />
+                    </div>
+                    <button type="button" onClick={startWebcam} disabled={isStreaming}>
+                        Start
+                    </button>
+                    <button type="button" onClick={stopWebcam} disabled={!isStreaming}>
+                        Stop
+                    </button>
+                </div>
+
+
+                <div className='gemini-panel'>
+                    <div className='gemini-header'>
+                        <p>Gemini results:</p>
+                        <div className='gemini-filters'>
+                            <label>Show:</label>
+                            <button onClick={() => setRiskFilter('all')} className={riskFilter === 'all' ? 'active' : ''}>All</button>
+                            <button onClick={() => setRiskFilter('low')} className={riskFilter === 'low' ? 'active' : ''}>Low</button>
+                            <button onClick={() => setRiskFilter('high')} className={riskFilter === 'high' ? 'active' : ''}>High</button>
+                            <button onClick={() => setRiskFilter('critical')} className={riskFilter === 'critical' ? 'active' : ''}>Critical</button>
+                        </div>
+                    </div>
+
+                    {/* Replace this simple unordered list with a card-like system.
+                     change id to the color depending on the analysis from the map called color_to_movement */}
+                    <div className='container-gemini'>
+                        {geminiResults
+                            .filter((result) => {
+                                if (riskFilter === 'all') return true
+                                const cls = extractClassification(result)
+                                const risk = classificationToRisk(cls)
+                                return risk === riskFilter
+                            })
+                            .map((result) => {
+                                const classification = extractClassification(result)
+                                const cardColor = color_to_movement.get(classification) || 'gray'
+                                const payload = result.text
+                                const displayText = typeof payload === 'object' ? payload.text : payload
+                                const elapsedMs = typeof payload === 'object' ? payload.elapsedMs : null
+
+                                return (
+                                    <div key={result.id} id={cardColor} className='card-gemini'>
+                                        <div className='card-gemini-row'>
+                                            <p className='card-gemini-text'>{displayText}</p>
+                                            {typeof elapsedMs === 'number' ? (
+                                                <span className='card-gemini-time'>{elapsedMs}ms</span>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                    </div>
+                </div>
+            </div>
+        </>
     )
 }

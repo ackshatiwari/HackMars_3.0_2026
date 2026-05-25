@@ -19,6 +19,7 @@ function Auth() {
         password: event.target.password.value,
         phone_number: event.target.phone_number.value,
         email: event.target.email.value,
+        medical_conditions: event.target.medical_conditions.value,
       }),
     })
     // extract error
@@ -78,7 +79,7 @@ function Auth() {
   }
 
   return (
-    <div>
+    <div className='auth-page'>
         <h1 className='auth-header'>Authentication</h1>
         <button className="auth-button" type="button" onClick={handleToggle}>
         {isSignIn ? 'Switch to sign up' : 'Switch to sign in'}
@@ -98,6 +99,7 @@ function Auth() {
           <input className="auth-input" type="email" name="email" placeholder="Email" />
           <input className="auth-input" type="password" name="password" placeholder="Password" />
           <input className="auth-input" type="text" name="phone_number" placeholder="Phone Number" />
+          <textarea className="auth-input" name="medical_conditions" placeholder="Medical Conditions (optional)" />
           <button className="auth-button" type="submit">Sign up</button>
         </form>
       )}

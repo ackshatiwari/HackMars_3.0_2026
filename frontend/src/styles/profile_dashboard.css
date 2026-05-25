@@ -1,5 +1,141 @@
-button{
-    padding: 10px 20px;
-    font-size: 16px;
+* {
+    box-sizing: border-box;
+}
+
+:root {
+    --navy: #08111d;
+    --navy-deep: #06111d;
+    --navy-mid: #0d1f33;
+    --lavender: #cfc8ff;
+    --lavender-soft: rgba(207, 200, 255, 0.14);
+    --coral: #ff7f6f;
+    --gold: #f4c76b;
+    --surface: rgba(13, 31, 51, 0.82);
+    --surface-strong: rgba(16, 37, 61, 0.94);
+    --border: rgba(207, 200, 255, 0.16);
+    --text: #f5f7fb;
+    --muted: #b7c2d4;
+}
+
+.profile-dashboard {
+    margin: 0;
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at top left, rgba(207, 200, 255, 0.2), transparent 30%),
+        radial-gradient(circle at top right, rgba(244, 199, 107, 0.14), transparent 26%),
+        linear-gradient(180deg, var(--navy) 0%, var(--navy-mid) 45%, #132944 100%);
+    color: var(--text);
+    font-family: Arial, sans-serif;
+}
+
+.profile-dashboard {
+    min-height: 100vh;
+    width: min(720px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 32px 24px;
+    display: grid;
+    gap: 18px;
+    align-content: center;
+}
+
+.profile-dashboard > div:first-child {
+    padding: 24px;
+    border-radius: 24px;
+    background: linear-gradient(180deg, var(--surface-strong), var(--surface));
+    border: 1px solid var(--border);
+    box-shadow: 0 22px 55px rgba(6, 17, 29, 0.3);
+    backdrop-filter: blur(12px);
+}
+
+.profile-dashboard h1 {
+    margin: 0 0 10px;
+    color: var(--lavender);
+    letter-spacing: -0.03em;
+}
+
+.profile-dashboard p {
+    margin: 8px 0;
+    color: var(--muted);
+}
+
+.profile-dashboard button {
+    padding: 11px 18px;
+    font-size: 15px;
+    font-weight: 700;
     cursor: pointer;
+    border: none;
+    border-radius: 999px;
+    color: var(--text);
+    background: linear-gradient(135deg, var(--navy-mid), #17395e);
+    box-shadow: 0 10px 22px rgba(6, 17, 29, 0.28);
+    transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.profile-dashboard button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 14px 26px rgba(6, 17, 29, 0.34);
+}
+
+.profile-dashboard > div:nth-child(2) button {
+    background: linear-gradient(135deg, var(--coral), #ff9a76);
+}
+
+.profile-dashboard > div:nth-child(3) button {
+    background: linear-gradient(135deg, var(--gold), #ffd98b);
+    color: var(--navy);
+}
+
+/* Left-sidebar layout overrides for profile dashboard */
+.profile-dashboard.pd-container {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px;
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+}
+
+.pd-sidebar {
+    width: 280px;
+    flex: 0 0 280px;
+}
+
+.pd-card {
+    padding: 20px;
+    border-radius: 16px;
+    background: linear-gradient(180deg, var(--surface-strong), var(--surface));
+    border: 1px solid var(--border);
+    box-shadow: 0 18px 40px rgba(6, 17, 29, 0.28);
+}
+
+.pd-username {
+    margin: 0 0 8px;
+    color: var(--lavender);
+    font-size: 20px;
+}
+
+.pd-info {
+    margin: 6px 0;
+    color: var(--muted);
+    font-size: 14px;
+}
+
+.pd-card-actions { margin-top: 14px; }
+
+.pd-main { flex: 1; min-height: 240px; padding: 8px 12px; }
+
+.pd-actions { margin-bottom: 12px; }
+
+.pd-start {
+    padding: 12px 20px;
+    font-weight: 800;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--gold), #ffd98b);
+    color: var(--navy);
+}
+
+@media (max-width: 720px) {
+    .profile-dashboard.pd-container { flex-direction: column; padding: 20px; }
+    .pd-sidebar { width: 100%; flex: none; }
 }
