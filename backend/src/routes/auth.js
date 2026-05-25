@@ -42,6 +42,44 @@ router.post('/signin', async (req, res) => {
     }
 })
 
+router.get('/profile', async (req, res) => {
+    const { email } = req.query
+
+    if (!email) {
+        return res.status(400).json({ error: 'email query parameter is required' })
+    }
+
+    try {
+        const result = await sql`
+            SELECT username, email, phone_number, medical_conditions, emergency_phone_contacts, emergency_email_contacts
+            FROM public.hackmars_users
+            WHERE email = ${email}
+        `
+
+        if (result.length === 0) {
+            return res.status(404).json({ error: 'User not found' })
+        }
+
+        const user = result[0]
+        const normalizeList = (value) => {
+            if (Array.isArray(value)) return value
+            if (value === null || value === undefined || value === '') return []
+            return [value]
+        }
+
+        return res.status(200).json({
+            username: user.username,
+            email: user.email,
+            phone_number: user.phone_number,
+            medical_conditions: user.medical_conditions,
+            emergency_phone_contacts: normalizeList(user.emergency_phone_contacts),
+            emergency_email_contacts: normalizeList(user.emergency_email_contacts),
+        })
+    } catch (error) {
+        return res.status(500).json({ error: error.message })
+    }
+})
+
 router.post('/update_notification_preferences', async (req, res) => {
     const { email, phone_number_for_notifications, email_for_notifications } = req.body
 
