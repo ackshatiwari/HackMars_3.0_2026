@@ -13,6 +13,7 @@ export default function RecordVideo() {
     const [geminiResults, setGeminiResults] = useState([])
     const [riskFilter, setRiskFilter] = useState('all') // 'all' | 'low' | 'high' | 'critical'
 
+    const MEDICAL_CONDITIONS = localStorage.getItem('user') ? JSON.parse(localStorage.getItem('user')).medical_conditions : null
 
     var color_to_movement = new Map()
     color_to_movement.set('normal_caregiving_assistance', 'green')
@@ -189,6 +190,7 @@ export default function RecordVideo() {
             form.append('frame_before', frameBefore, 'frame_before.jpg')
             form.append('frame', frame, 'frame.jpg')
             form.append('frame_after', frameAfter, 'frame_after.jpg')
+            form.append('medical_conditions', MEDICAL_CONDITIONS || '')
 
             requestInFlightRef.current = true
             try {

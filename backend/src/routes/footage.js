@@ -64,6 +64,10 @@ router.post('/parse_live_video_frame', upload.fields([
 
     try {
 
+        // get medical conditions from the request body if it exists
+        const medicalConditions = req.body.medical_conditions || ' '
+        console.log('Received medical_conditions:', medicalConditions)
+
         const uploadedFiles = req.files || {}
         console.log('parse_live_video_frame: req.files=', Object.fromEntries(Object.entries(uploadedFiles).map(([key, value]) => [key, value && value[0] && { originalname: value[0].originalname, path: value[0].path, size: value[0].size }])))
 
@@ -110,6 +114,9 @@ router.post('/parse_live_video_frame', upload.fields([
         appendIfExists(previousFramePath, 'frame_before')
         appendIfExists(currentFramePath, 'frame')
         appendIfExists(nextFramePath, 'frame_after')
+        if (medicalConditions && String(medicalConditions).trim()) {
+            form.append('medical_conditions', String(medicalConditions).trim())
+        }
 
         const resp = await fetch(`${pythonUrl}/analyze-frame/`, {
             method: 'POST',

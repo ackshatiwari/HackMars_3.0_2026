@@ -51,7 +51,7 @@ Path(FRAME_DIRECTORY).mkdir(parents=True, exist_ok=True)
 JOBS = {}
 
 
-async def _run_gemini_job(job_id: str, suspicious_motion, frames_directory: str, callback_url: str | None = None):
+async def _run_gemini_job(job_id: str, suspicious_motion, frames_directory: str, medical_conditions: str | None = None, callback_url: str | None = None):
     try:
         JOBS[job_id]["stage"] = "gemini_starting"
         logger.info("Gemini job %s starting (%s suspicious events)", job_id, len(suspicious_motion) if suspicious_motion else 0)
@@ -61,7 +61,7 @@ async def _run_gemini_job(job_id: str, suspicious_motion, frames_directory: str,
         # If Gemini hangs, convert it to an error instead of leaving the job pending forever.
         JOBS[job_id]["stage"] = "gemini_running"
         result = await asyncio.wait_for(
-            asyncio.to_thread(gemini_analysis, suspicious_motion, frames_directory),
+            asyncio.to_thread(gemini_analysis, suspicious_motion, frames_directory, medical_conditions),
             timeout=90.0,
         )
         t1 = time.time()
@@ -204,6 +204,7 @@ async def analyze_frame(
     frame: UploadFile = File(...),
     frame_before: UploadFile | None = File(None),
     frame_after: UploadFile | None = File(None),
+    medical_conditions: str | None = File(None),
 ):
     async def decode_image(upload_file: UploadFile):
 
@@ -259,7 +260,7 @@ async def analyze_frame(
         pass
 
     # schedule the background task
-    task = asyncio.create_task(_run_gemini_job(job_id, suspicious_motion, FRAME_DIRECTORY, callback_url))
+    task = asyncio.create_task(_run_gemini_job(job_id, suspicious_motion, FRAME_DIRECTORY, medical_conditions, callback_url))
 
     def _log_task_result(done_task: asyncio.Task):
         try:

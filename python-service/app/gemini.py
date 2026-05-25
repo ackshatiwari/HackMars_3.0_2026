@@ -19,7 +19,7 @@ if GOOGLE_API_KEY:
     except Exception:
         GENAI_CLIENT = None
 
-def gemini_caregiver_abuse_analysis(suspicious_motion, frames_directory=None):
+def gemini_caregiver_abuse_analysis(suspicious_motion, frames_directory=None, medical_conditions=None):
     if not GOOGLE_API_KEY:
         # Fall back to a mock analysis when no API key is present.
         analyses = []
@@ -29,8 +29,7 @@ def gemini_caregiver_abuse_analysis(suspicious_motion, frames_directory=None):
                 'person_id': ev.get('person_id'),
                 'side': ev.get('side'),
                 'movement': ev.get('movement'),
-                'analysis': 'GOOGLE_API_KEY not set; returning mock analysis.',
-                'classification': None,
+                'analysis': 'GOOGLE_API_KEY not set; returning mock analysis.'
             })
         return {'per_frame': analyses}
     # Use module-scoped GenAI client
@@ -82,9 +81,23 @@ def gemini_caregiver_abuse_analysis(suspicious_motion, frames_directory=None):
         return types.Part.from_bytes(data=buf.tobytes(), mime_type='image/jpeg')
 
     current_frame = strongest_event.get('frame', 'unknown')
+    medical_conditions_text = str(medical_conditions or '').strip()
+
+    medical_context_part = None
+    if medical_conditions_text:
+        medical_context_part = types.Part.from_text(
+            text=(
+                f"THE PATIENT HAS BEEN DIAGNOSED WITH {medical_conditions_text.upper()}. "
+                f"THIS IS CRITICAL CONTEXT. YOU MUST ACCOUNT FOR THIS CONDITION WHEN ASSESSING THE SCENE. "
+                f"DO NOT DISMISS OR DOWNPLAY POSSIBLE ABUSE JUST BECAUSE THE PERSON'S MOVEMENT, POSTURE, "
+                f"OR REACTION MAY LOOK DIFFERENT DUE TO THE MEDICAL CONDITION. "
+                f"IF THE BEHAVIOR, CONTACT, FORCE, OR REACTION STILL SUGGESTS HARM, ESCALATE IT AS POSSIBLE ABUSE."
+            )
+        )
     # include prompt, a short textual summary, and the event details
     contents = [
         types.Part.from_text(text=prompt),
+        *([medical_context_part] if medical_context_part is not None else []),
         types.Part.from_text(text=f"Current frame: {current_frame}"),
         types.Part.from_text(text=f"Event details: {json.dumps(strongest_event, default=str)}"),
     ]
@@ -141,23 +154,6 @@ def gemini_caregiver_abuse_analysis(suspicious_motion, frames_directory=None):
             'traceback': traceback.format_exc(),
         }
 
-    # simple keyword-based post-processing to produce a short `classification` value
-    def infer_classification(text_str: str | None):
-        if not text_str:
-            return None
-        s = str(text_str).lower()
-        if any(k in s for k in ("abuse", "hit", "punch", "strike", "beat")):
-            return 'potential_physical_abuse'
-        if any(k in s for k in ("aggress", "force", "shove", "yank", "grab")):
-            return 'aggressive_handling'
-        if any(k in s for k in ("accident", "accidental", "trip", "fall", "slip")):
-            return 'accidental_movement'
-        if any(k in s for k in ("assist", "help", "support", "caregiving")):
-            return 'normal_caregiving_assistance'
-        return None
-
-    classification = infer_classification(text)
-
     return {
         'per_frame': [{
             'frame': current_frame,
@@ -165,7 +161,6 @@ def gemini_caregiver_abuse_analysis(suspicious_motion, frames_directory=None):
             'side': strongest_event.get('side'),
             'movement': strongest_event.get('movement'),
             'analysis': text,
-            'classification': classification,
             'gemini_elapsed_ms': elapsed_ms
         }]
     }
