@@ -9,6 +9,7 @@ export default function RecordVideo() {
     const frameBufferRef = useRef([])
     const requestInFlightRef = useRef(false)
     const analysisInFlightRef = useRef(false)
+    const notifiedRef = useRef(new Set())
     const [isStreaming, setIsStreaming] = useState(false)
     const [geminiResults, setGeminiResults] = useState([])
     const [riskFilter, setRiskFilter] = useState('all') // 'all' | 'low' | 'high' | 'critical'
@@ -68,6 +69,25 @@ export default function RecordVideo() {
 
 
     const upsertGeminiResult = (jobId, text) => {
+
+        // only notify once per job/result
+        try {
+            // classification may be either on text.classification or embedded in text.text (JSON string)
+            const maybeText = (typeof text === 'object') ? text : { text }
+            const clsFromField = maybeText.classification
+            const clsFromBody = extractClassification({ text: maybeText.text })
+            const cls = clsFromField || clsFromBody
+            const alertText = (typeof text === 'object') ? (text.text || JSON.stringify(text)) : text
+
+            if (cls && (cls === 'aggressive_handling' || cls === 'potential_physical_abuse') && !notifiedRef.current.has(jobId)) {
+                console.log('upsertGeminiResult: triggering sendEmailAlert', { jobId, cls })
+                notifiedRef.current.add(jobId)
+                sendEmailAlert(cls, alertText)
+            }
+        } catch (e) {
+            console.error('notify guard error', e)
+        }
+
         setGeminiResults((prev) => {
             const next = prev.filter((item) => item.id !== jobId)
             return [{ id: jobId, text }, ...next].slice(0, 50)
@@ -158,6 +178,28 @@ export default function RecordVideo() {
             stopWebcam()
         }
     }, [])
+
+    const sendEmailAlert = async (classification, text) => {
+        // get user email
+        const raw = localStorage.getItem('user')
+        const email = raw ? JSON.parse(raw).email : null
+
+        try {
+            await fetch('/api/email/send_email', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email || null,
+                    classification,
+                    text,
+                }),
+            })
+        } catch (error) {
+            console.error('Error sending email alert:', error)
+        }
+    }
 
     const captureFrame = async () => {
         if (!videoRef.current || !canvasRef.current) return
@@ -279,11 +321,11 @@ export default function RecordVideo() {
                     <div className='container-gemini'>
                         {geminiResults
                             .filter((result) => {
-                                if (riskFilter === 'all') return true
-                                const cls = extractClassification(result)
-                                const risk = classificationToRisk(cls)
-                                return risk === riskFilter
-                            })
+                                    if (riskFilter === 'all') return true
+                                    const cls = extractClassification(result)
+                                    const risk = classificationToRisk(cls)
+                                    return risk === riskFilter
+                                })
                             .map((result) => {
                                 const classification = extractClassification(result)
                                 const cardColor = color_to_movement.get(classification) || 'gray'
