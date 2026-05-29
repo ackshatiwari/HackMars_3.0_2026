@@ -183,19 +183,41 @@ export default function RecordVideo() {
         // get user email
         const raw = localStorage.getItem('user')
         const email = raw ? JSON.parse(raw).email : null
+        if (!email) {
+            console.warn('sendEmailAlert: no user email available')
+            return
+        }
 
         try {
-            await fetch('/api/email/send_email', {
+            const form = new FormData()
+            form.append('email', email)
+            form.append('classification', classification)
+            form.append('text', typeof text === 'string' ? text : JSON.stringify(text))
+
+            // attach up to three most recent frames from the frame buffer
+            try {
+                const buffer = frameBufferRef.current || []
+                const last = buffer.slice(-3)
+                const names = ['frame_before', 'frame', 'frame_after']
+                // align to the end of names
+                const start = names.length - last.length
+                last.forEach((blob, idx) => {
+                    const field = names[start + idx]
+                    form.append(field, blob, `${field}.jpg`)
+                })
+            } catch (e) {
+                console.warn('sendEmailAlert: failed to attach frames', e)
+            }
+
+            const response = await fetch('/api/email/send_email', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    email: email || null,
-                    classification,
-                    text,
-                }),
+                body: form,
             })
+
+            if (!response.ok) {
+                const message = await response.text()
+                throw new Error(message || `Email request failed with status ${response.status}`)
+            }
         } catch (error) {
             console.error('Error sending email alert:', error)
         }
