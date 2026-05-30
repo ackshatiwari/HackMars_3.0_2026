@@ -1,0 +1,196 @@
+.pd-family-member-template {
+    /* card showing the name of the corresponding patient */
+    padding: 12px;
+    margin: 8px 0;
+    border-radius: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    max-width: 380px;
+    background-color: #f5f6ff;
+    color: #072146;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.pd-family-card {
+    padding: 16px;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+    box-shadow: 0 4px 12px rgba(2, 6, 23, 0.04);
+    margin-bottom: 12px;
+}
+
+.pd-family-members-card {
+    padding: 12px;
+    border-radius: 10px;
+    background: #0a0599;
+    border: 1px solid rgba(2, 6, 23, 0.04);
+}
+
+.pd-family-member-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 6px;
+    border-bottom: 1px dashed rgba(2, 6, 23, 0.03);
+}
+
+.pd-family-member-row:last-child {
+    border-bottom: none;
+}
+
+.pd-card-title {
+    font-weight: 600;
+    color: #05314a;
+}
+
+.pd-card-value {
+    color: #d6c9fa;
+}
+
+.pd-family-card {
+    /*Set background-color, color, padding, radius, and margin*/
+    background: #0a0599;
+    color: #d6c9fa;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+
+}
+
+/* family layout */
+.pd-family-layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 20px;
+    padding: 20px;
+}
+
+.pd-family-right {
+    background: #0a0599;
+    padding: 12px;
+    border-radius: 10px;
+}
+
+.pd-family-alerts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin-top: 12px;
+}
+
+.pd-family-alert-card {
+    display: flex;
+    gap: 12px;
+    padding: 12px;
+    border-radius: 10px;
+    background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    border: 1px solid rgba(2, 6, 23, 0.06);
+    align-items: stretch;
+    transition: transform 120ms ease, box-shadow 120ms ease;
+    box-shadow: 0 1px 4px rgba(2,6,23,0.04);
+}
+
+.pd-family-alert-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(2,6,23,0.08);
+}
+
+.pd-family-alert-image {
+    width: 120px;
+    height: 84px;
+    background: linear-gradient(90deg, #eef2ff, #f7f9ff);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    color: #6b7280;
+    font-size: 12px;
+    overflow: hidden;
+    flex: 0 0 120px;
+}
+
+.pd-family-alert-body h4 {
+    margin: 0 0 6px 0;
+}
+
+.pd-family-alert-body p {
+    margin: 0;
+    font-size: 13px;
+    color: #1f2d3d;
+    line-height: 1.3;
+}
+
+.alert-classification {
+    font-weight: 600;
+    color: #05314a;
+}
+
+.alert-reason {
+    color: #1f2d3d;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-clamp: 3;
+}
+
+/*put the alert confidence on the very bottom of the alert card */
+.alert-confidence {
+    color: #1f2d3d;
+    font-size: 12px;
+    margin-top: 8px;
+}
+
+/*Put the alert tiemstamp as a small note at the bottom-right of the alert card */
+.alert-timestamp {
+    color: #6b7280;
+    font-size: 11px;
+    margin-top: 8px;
+    text-align: right;
+}
+
+/* risk badge variations - add data-risk="high|medium|low" on the card for color */
+.pd-family-alert-card::before {
+    content: '';
+    position: absolute;
+    pointer-events: none;
+}
+
+.pd-family-alert-card[data-risk="high"] {
+    border-left: 4px solid rgba(220, 38, 38, 0.9);
+}
+.pd-family-alert-card[data-risk="medium"] {
+    border-left: 4px solid rgba(245, 158, 11, 0.95);
+}
+.pd-family-alert-card[data-risk="low"] {
+    border-left: 4px solid rgba(16, 185, 129, 0.95);
+}
+
+/* make body layout column to align timestamp at bottom */
+.pd-family-alert-body {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.pd-family-alert-meta {
+    margin-top: auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.alert-confidence {
+    background: rgba(2,6,23,0.04);
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-weight: 600;
+    color: #0b2540;
+}
+
+@media (max-width: 720px) {
+    .pd-family-layout { grid-template-columns: 1fr; }
+    .pd-family-alert-image { display: none; }
+    .pd-family-alert-card { padding: 10px; }
+}

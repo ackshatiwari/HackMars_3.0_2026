@@ -80,9 +80,11 @@ export default function RecordVideo() {
             const alertText = (typeof text === 'object') ? (text.text || JSON.stringify(text)) : text
 
             if (cls && (cls === 'aggressive_handling' || cls === 'potential_physical_abuse') && !notifiedRef.current.has(jobId)) {
-                console.log('upsertGeminiResult: triggering sendEmailAlert', { jobId, cls })
+                console.log('upsertGeminiResult: triggering sendEmailAlert and report log', { jobId, cls })
                 notifiedRef.current.add(jobId)
                 sendEmailAlert(cls, alertText)
+                // also log the abuse report to the backend DB
+                sendReportToDb(cls, alertText).catch((e) => console.warn('sendReportToDb failed', e))
             }
         } catch (e) {
             console.error('notify guard error', e)
@@ -220,6 +222,56 @@ export default function RecordVideo() {
             }
         } catch (error) {
             console.error('Error sending email alert:', error)
+        }
+    }
+
+    const extractReasonConfidence = (text) => {
+        let reason = ''
+        let confidence = null
+        if (!text) return { reason, confidence }
+
+        try {
+            const jsonText = extractJsonText(text)
+            const parsed = JSON.parse(jsonText)
+            if (parsed) {
+                reason = parsed.reason || parsed.reasons || parsed.explanation || parsed.summary || ''
+                confidence = parsed.confidence || parsed.confidence_score || parsed.score || null
+            }
+        } catch (e) {
+            // not JSON or parse failed; try to do simple regexes
+            const confMatch = /confidence\s*[:=]\s*(\d+(?:\.\d+)?)/i.exec(text)
+            if (confMatch) confidence = Number(confMatch[1])
+            const reasonMatch = /reason\s*[:=]\s*([\s\S]{1,200})/i.exec(text)
+            if (reasonMatch) reason = reasonMatch[1].trim()
+        }
+
+        return { reason, confidence }
+    }
+
+    const sendReportToDb = async (classification, text) => {
+        const raw = localStorage.getItem('user')
+        const email = raw ? JSON.parse(raw).email : null
+        if (!email) {
+            console.warn('sendReportToDb: no user email available')
+            return
+        }
+
+        const { reason, confidence } = extractReasonConfidence(text)
+
+        try {
+            const resp = await fetch('/api/email/send_report_to_db', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ classification, reason, confidence, patient_email: email }),
+            })
+
+            if (!resp.ok) {
+                const body = await resp.json().catch(() => null)
+                throw new Error(body?.error || `report logging failed ${resp.status}`)
+            }
+        } catch (e) {
+            console.error('Error logging report to DB:', e)
+            throw e
         }
     }
 

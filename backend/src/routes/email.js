@@ -176,4 +176,62 @@ router.post('/send_email', upload.fields([
     }
 })
 
+// store abuse report to DB
+router.post('/send_report_to_db', async (req, res) => {
+    try {
+        const { classification, reason, confidence, patient_email } = req.body || {}
+
+        if (!patient_email) {
+            return res.status(400).json({ error: 'patient_email is required' })
+        }
+
+        // basic validation
+        const cls = classification || ''
+        const rsn = reason || ''
+        const conf = (confidence === undefined || confidence === null) ? null : Number(confidence)
+
+        // ensure patient exists
+        const userRows = await sql`
+            SELECT email FROM public.hackmars_users WHERE email = ${patient_email}
+        `
+        if (!userRows || userRows.length === 0) {
+            return res.status(400).json({ error: 'patient_email does not match any user' })
+        }
+
+        // insert into abuse_reports table (assumes table exists with a foreign key to hackmars_users.email)
+        await sql`
+            INSERT INTO public.caregiver_abuse_reports (classification, reason, confidence, patient_email, created_at)
+            VALUES (${cls}, ${rsn}, ${conf}, ${patient_email}, now())
+        `
+
+        return res.status(200).json({ message: 'Report stored' })
+    } catch (err) {
+        console.error('send_report_to_db error:', err)
+        return res.status(500).json({ error: 'Failed to store report', details: err.message })
+    }
+})
+
+// return the recent abuse with the email being passed in the url
+router.get('/get_reports', async (req, res) => {
+    try {
+        const { email } = req.query
+        if (!email) {
+            return res.status(400).json({ error: 'email query parameter is required' })
+        }
+        const reports = await sql`
+            SELECT classification, reason, confidence, created_at
+            FROM public.caregiver_abuse_reports
+            WHERE patient_email = ${email}
+            ORDER BY created_at DESC
+        `
+
+        return res.status(200).json({ reports })
+    } catch (err) {
+        console.error('get_reports error:', err)
+        return res.status(500).json({ error: 'Failed to fetch reports', details: err.message })
+    }
+})
+
+
 export default router
+

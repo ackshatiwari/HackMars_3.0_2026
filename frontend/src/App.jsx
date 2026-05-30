@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import Auth from './components/auth'
-import ProfileDashboard from './components/profile_dashboard'
+import PatientDashboard from './components/patient_dashboard'
+import FamilyDashboard from './components/family_dashboard'
 import './App.css'
 
 function App() {
@@ -30,10 +31,12 @@ function App() {
     setLoadAuth(true)
   }
 
+  const normalizedRole = (user?.role || '').toString().toLowerCase()
+
   return (
     <>
       {user ? (
-        <ProfileDashboard />
+        normalizedRole === 'family' ? <FamilyDashboard /> : <PatientDashboard />
       ) : loadAuth ? (
         <Auth />
       ) : (

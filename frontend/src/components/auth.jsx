@@ -3,12 +3,18 @@ import '../styles/auth.css'
 
 function Auth() {
   const [isSignIn, setIsSignIn] = useState(true)
+  const [accountRole, setAccountRole] = useState('Patient')
 
 
   // submits sign-up form
   const handleSignUpSubmit = async (event) => {
     event.preventDefault()
     // endpoint is /api/auth/signup
+
+    const medicalConditionsValue = event.target.medical_conditions?.value || 'None'
+    const linkedFamilyAccountEmailValue = event.target.linked_family_account_email?.value || ''
+
+
     const res = await fetch('/api/auth/signup', {
       method: 'POST',
       headers: {
@@ -19,7 +25,9 @@ function Auth() {
         password: event.target.password.value,
         phone_number: event.target.phone_number.value,
         email: event.target.email.value,
-        medical_conditions: event.target.medical_conditions.value,
+        medical_conditions: medicalConditionsValue,
+        role: accountRole,
+        linked_family_account_email: linkedFamilyAccountEmailValue,
       }),
     })
     // extract error
@@ -69,6 +77,10 @@ function Auth() {
     setIsSignIn((current) => !current)
   }
 
+  const handleRoleToggle = () => {
+    setAccountRole((current) => (current === 'Patient' ? 'Family' : 'Patient'))
+  }
+
   const handleSubmit = (event) => {
     event.preventDefault()
     if (isSignIn) {
@@ -84,22 +96,34 @@ function Auth() {
         <button className="auth-button" type="button" onClick={handleToggle}>
         {isSignIn ? 'Switch to sign up' : 'Switch to sign in'}
       </button>
+      <button className="auth-button" type="button" onClick={handleRoleToggle}>
+        {accountRole === 'Patient' ? 'Switch to Family' : 'Switch to Patient'}
+      </button>
 
       {isSignIn ? (
         <form className="auth-form" onSubmit={handleSubmit}>
-          <h1 className="auth-title">Sign in</h1>
+          <h1 className="auth-title">Sign in as {accountRole}</h1>
           <input className="auth-input" type="email" name="email" placeholder="Email" />
           <input className="auth-input" type="password" name="password" placeholder="Password" />
           <button className="auth-button" type="submit">Sign in</button>
         </form>
       ) : (
         <form className="auth-form" onSubmit={handleSubmit}>
-          <h1 className="auth-title">Sign up</h1>
+          <h1 className="auth-title">Sign up as {accountRole}</h1>
           <input className="auth-input" type="text" name="username" placeholder="Username" />
           <input className="auth-input" type="email" name="email" placeholder="Email" />
           <input className="auth-input" type="password" name="password" placeholder="Password" />
           <input className="auth-input" type="text" name="phone_number" placeholder="Phone Number" />
-          <textarea className="auth-input" name="medical_conditions" placeholder="Medical Conditions (optional)" />
+          {accountRole === 'Patient' ? (
+            <textarea className="auth-input" name="medical_conditions" placeholder="Medical Conditions (optional)" />
+          ) : (
+            <input
+              className="auth-input"
+              type="email"
+              name="linked_family_account_email"
+              placeholder="Patient Email to Link"
+            />
+          )}
           <button className="auth-button" type="submit">Sign up</button>
         </form>
       )}

@@ -4,16 +4,16 @@ const router = express.Router()
 
 // sign-up endpoint
 router.post('/signup', async (req, res) => {
-    // username, password, phone_number, email, medical_conditions
-    const { username, password, phone_number, email, medical_conditions } = req.body
+    // username, password, phone_number, email, medical_conditions, role, linked_family_account_email
+    const { username, password, phone_number, email, medical_conditions, role, linked_family_account_email } = req.body
 
     try {
 
         const result = await sql`
-            INSERT INTO hackmars_users (username, password, phone_number, email, medical_conditions)
-            VALUES (${username}, ${password}, ${phone_number}, ${email}, ${medical_conditions})
+            INSERT INTO hackmars_users (username, password, phone_number, email, medical_conditions, role, linked_family_account_email)
+            VALUES (${username}, ${password}, ${phone_number}, ${email}, ${medical_conditions}, ${role}, ${linked_family_account_email})
         `
-        res.status(201).json({ message: 'User created successfully', user: { username, email, phone_number, medical_conditions } })
+        res.status(201).json({ message: 'User created successfully', user: { username, email, phone_number, medical_conditions, role, linked_family_account_email } })
 
     } catch (error) {
         res.status(500).json({ error: error.message })
@@ -34,7 +34,7 @@ router.post('/signin', async (req, res) => {
         if (result.length === 0) {
             res.status(401).json({ error: 'Invalid email or password' })
         } else {
-            res.status(200).json({ message: 'Sign-in successful', user: { username: result[0].username, email: result[0].email, phone_number: result[0].phone_number, medical_conditions: result[0].medical_conditions } })
+            res.status(200).json({ message: 'Sign-in successful', user: { username: result[0].username, email: result[0].email, phone_number: result[0].phone_number, medical_conditions: result[0].medical_conditions, role: result[0].role, linked_family_account_email: result[0].linked_family_account_email } })
         }
 
     } catch (error) {
@@ -51,7 +51,7 @@ router.get('/profile', async (req, res) => {
 
     try {
         const result = await sql`
-            SELECT username, email, phone_number, medical_conditions, emergency_phone_contacts, emergency_email_contacts
+            SELECT username, email, phone_number, medical_conditions, role, linked_family_account_email, emergency_phone_contacts, emergency_email_contacts
             FROM public.hackmars_users
             WHERE email = ${email}
         `
@@ -72,6 +72,8 @@ router.get('/profile', async (req, res) => {
             email: user.email,
             phone_number: user.phone_number,
             medical_conditions: user.medical_conditions,
+            role: user.role,
+            linked_family_account_email: user.linked_family_account_email,
             emergency_phone_contacts: normalizeList(user.emergency_phone_contacts),
             emergency_email_contacts: normalizeList(user.emergency_email_contacts),
         })
