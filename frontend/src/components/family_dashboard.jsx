@@ -72,6 +72,7 @@ function FamilyDashboard() {
 	const [selectedGroupId, setSelectedGroupId] = useState(null)
 	const [selectedImageIndex, setSelectedImageIndex] = useState(0)
 	const [alertPage, setAlertPage] = useState(0)
+	const [timeFilter, setTimeFilter] = useState('all')
 	const linkedEmail = profile?.linked_family_account_email || localUser?.linked_family_account_email
 
     // print the user's username, email, phone number, medical conditions, role, linked family account email, emergency phone contacts, and emergency email contacts in the console on mount
@@ -224,9 +225,21 @@ function FamilyDashboard() {
 		})
 	}, [alertData])
 
+	const filteredAlerts = useMemo(() => {
+		if (timeFilter === 'all') return groupedAlerts
+		const cutoffMs = { last24hours: 24 * 60 * 60 * 1000, last7days: 7 * 24 * 60 * 60 * 1000, last30days: 30 * 24 * 60 * 60 * 1000 }[timeFilter]
+		const since = Date.now() - cutoffMs
+		return groupedAlerts.filter((group) => new Date(group.startedAt).getTime() >= since)
+	}, [groupedAlerts, timeFilter])
+
+	const handleTimeFilter = (value) => {
+		setTimeFilter((current) => (current === value ? 'all' : value))
+		setAlertPage(0)
+	}
+
 	const pageSize = 3
-	const totalAlertPages = Math.max(1, Math.ceil(groupedAlerts.length / pageSize))
-	const visibleAlertGroups = groupedAlerts.slice(alertPage * pageSize, (alertPage + 1) * pageSize)
+	const totalAlertPages = Math.max(1, Math.ceil(filteredAlerts.length / pageSize))
+	const visibleAlertGroups = filteredAlerts.slice(alertPage * pageSize, (alertPage + 1) * pageSize)
 
 	const selectedGroup = useMemo(() => {
 		if (!groupedAlerts.length) return null
@@ -307,15 +320,15 @@ function FamilyDashboard() {
 					<p className='dashboard-label'>Family Members</p>
 					{linkedMember ? (
 						<div className='family-member-template'>
-							<div className='family-member-row'>
+							<div className='summary-item'>
 								<span className='dashboard-title'>Name: </span>
 								<span className='dashboard-value'>{formatValue(linkedMember.username)}</span>
 							</div>
-							<div className='family-member-row'>
+							<div className='summary-item'>
 								<span className='dashboard-title'>Email: </span>
 								<span className='dashboard-value'>{formatValue(linkedMember.email)}</span>
 							</div>
-							<div className='family-member-row'>
+							<div className='summary-item'>
 								<span className='dashboard-title'>Phone: </span>
 								<span className='dashboard-value'>{formatValue(linkedMember.phone_number)}</span>
 							</div>
@@ -324,19 +337,62 @@ function FamilyDashboard() {
 						<p className='dashboard-muted'>{linkedMemberError || 'Linked member will appear here.'}</p>
 					)}
 				</div>
-			</aside>
 
+				{/* Include quick summary containing total alerts of all time, last week, and last 24 hours */}
+				<div className='dashboard-card summary-card'>
+					<p className='dashboard-label'>Summary</p>
+					<div className='summary-row'>
+						<div className='summary-item'>
+							<img src='../../public/total_alerts.png' alt='Total alerts icon' className='summary-icon' />
+							<span className='dashboard-title'>Total alerts:</span>
+							<span className='dashboard-value'>{groupedAlerts.length}</span>
+						</div>
+						<div className='summary-item'>
+							<img src='../../public/weekly_alerts.png' alt='Weekly alerts icon' className='summary-icon' />
+							<span className='dashboard-title'>Last 7 days:</span>
+							<span className='dashboard-value'>{groupedAlerts.filter((group) => new Date(group.startedAt) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)).length}</span>
+						</div>
+						<div className='summary-item'>
+							<img src='../../public/daily_alerts.png' alt='Daily alerts icon' className='summary-icon' />
+							<span className='dashboard-title'>Last 24 hours:</span>
+							<span className='dashboard-value'>{groupedAlerts.filter((group) => new Date(group.startedAt) >= new Date(Date.now() - 24 * 60 * 60 * 1000)).length}</span>
+						</div>
+					</div>
+				</div>
+			</aside>
+			
 			<main className='dashboard-main'>
 				<div className='dashboard-alerts-panel'>
 					<div className='dashboard-alerts-header'>
-						<div>
+						<div className='dashboard-alerts-header-top'>
 							<h3 className='dashboard-settings-title'>Captured alert feed</h3>
 							<p className='dashboard-feed-note'>Click one of the grouped alerts below to view more info, thumbnails, and motion timeline.</p>
 						</div>
-						<div className='dashboard-feed-pagination'>
-							<button type='button' onClick={goPrevAlertPage} disabled={alertPage === 0}>Previous</button>
-							<span>Page {alertPage + 1} of {totalAlertPages}</span>
-							<button type='button' onClick={goNextAlertPage} disabled={alertPage >= totalAlertPages - 1}>Next</button>
+						<div className='dashboard-alerts-header-bottom'>
+							<div className='dashboard-feed-pagination'>
+								<button type='button' onClick={goPrevAlertPage} disabled={alertPage === 0}>Previous</button>
+								<span>Page {alertPage + 1} of {totalAlertPages}</span>
+								<button type='button' onClick={goNextAlertPage} disabled={alertPage >= totalAlertPages - 1}>Next</button>
+							</div>
+							<div className='dashboard-filter-bar'>
+								<svg className='dashboard-filter-icon' viewBox='0 0 16 16' fill='none' xmlns='http://www.w3.org/2000/svg'>
+									<path d='M1 3h14M4 8h8M7 13h2' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round'/>
+								</svg>
+								{[
+									{ label: 'Last 24 Hours', value: 'last24hours' },
+									{ label: 'Last 7 Days', value: 'last7days' },
+									{ label: 'Last 30 Days', value: 'last30days' },
+								].map(({ label, value }) => (
+									<button
+										key={value}
+										type='button'
+										className={`dashboard-filter-btn ${timeFilter === value ? 'is-active' : ''}`}
+										onClick={() => handleTimeFilter(value)}
+									>
+										{label}
+									</button>
+								))}
+							</div>
 						</div>
 					</div>
 
