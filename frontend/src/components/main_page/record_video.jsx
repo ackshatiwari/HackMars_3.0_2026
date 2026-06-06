@@ -370,7 +370,7 @@ export default function RecordVideo() {
     }, [isStreaming])
 
     return (
-        <>
+        <div className='rv-root'>
             <div>
                 <h2>Live Video Analysis</h2>
             </div>
@@ -433,6 +433,6 @@ export default function RecordVideo() {
                     </div>
                 </div>
             </div>
-        </>
+        </div>
     )
 }
