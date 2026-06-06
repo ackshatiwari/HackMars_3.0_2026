@@ -6,7 +6,7 @@ function LandingPage({ isSignedIn, user, onSignIn, onViewProfile }) {
 	return (
 		<div className="landing-root">
 			<header className="landing-topbar">
-				<div className="landing-brand">GuardSight</div>
+				<div className="landing-brand"></div>
 				<button
 					type="button"
 					className="landing-cta"

@@ -4,3 +4,30 @@
   font-size: 16px;
   cursor: pointer;
 }
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  padding: 10px 20px;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+}
+
+.app-logo {
+  height: 72px;
+  width: auto;
+  display: block;
+  object-fit: contain;
+}
+
+.app-content {
+  flex: 1;
+}

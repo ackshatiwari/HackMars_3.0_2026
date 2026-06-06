@@ -36,12 +36,11 @@ function App() {
   const normalizedRole = (user?.role || '').toString().toLowerCase()
   const renderDashboard = normalizedRole === 'family' ? <FamilyDashboard /> : <PatientDashboard />
 
+  let content
   if (activeView === 'dashboard') {
-    return renderDashboard
-  }
-
-  if (activeView === 'auth') {
-    return (
+    content = renderDashboard
+  } else if (activeView === 'auth') {
+    content = (
       <>
         <div style={{ padding: '12px 16px' }}>
           <button type="button" onClick={handleBackToLanding}>Back</button>
@@ -49,15 +48,26 @@ function App() {
         <Auth />
       </>
     )
+  } else {
+    content = (
+      <LandingPage
+        isSignedIn={Boolean(user)}
+        user={user}
+        onSignIn={handleOpenAuth}
+        onViewProfile={handleViewProfile}
+      />
+    )
   }
 
   return (
-    <LandingPage
-      isSignedIn={Boolean(user)}
-      user={user}
-      onSignIn={handleOpenAuth}
-      onViewProfile={handleViewProfile}
-    />
+    <div className='app-shell'>
+      <header className='app-topbar'>
+        <img src='/GuardSight_Logo.png' alt='GuardSight' className='app-logo' />
+      </header>
+      <div className='app-content'>
+        {content}
+      </div>
+    </div>
   )
 }
 
