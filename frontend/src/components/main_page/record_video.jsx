@@ -259,10 +259,22 @@ export default function RecordVideo() {
         const { reason, confidence } = extractReasonConfidence(text)
 
         try {
+            const form = new FormData()
+            form.append('classification', classification || '')
+            form.append('reason', reason || '')
+            form.append('confidence', confidence === null || confidence === undefined ? '' : String(confidence))
+            form.append('patient_email', email)
+
+            // Attach the most recent frame so family dashboard can display the exact motion thumbnail.
+            const buffer = frameBufferRef.current || []
+            const latestFrame = buffer.length > 0 ? buffer[buffer.length - 1] : null
+            if (latestFrame) {
+                form.append('thumbnail', latestFrame, `alert-${Date.now()}.jpg`)
+            }
+
             const resp = await fetch('/api/email/send_report_to_db', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ classification, reason, confidence, patient_email: email }),
+                body: form,
             })
 
             if (!resp.ok) {

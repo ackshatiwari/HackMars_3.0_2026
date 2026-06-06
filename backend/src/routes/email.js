@@ -7,6 +7,59 @@ import path from 'path'
 
 const router = express.Router()
 const upload = multer({ dest: 'uploads/' })
+const alertThumbDir = path.resolve(process.cwd(), 'uploads', 'alert-thumbs')
+const alertThumbMetaPath = path.resolve(process.cwd(), 'uploads', 'alert-thumbs-meta.json')
+
+const ensureThumbStorage = () => {
+    fs.mkdirSync(alertThumbDir, { recursive: true })
+    if (!fs.existsSync(alertThumbMetaPath)) {
+        fs.writeFileSync(alertThumbMetaPath, JSON.stringify({ items: [] }, null, 2), 'utf-8')
+    }
+}
+
+const readThumbMeta = () => {
+    try {
+        ensureThumbStorage()
+        const raw = fs.readFileSync(alertThumbMetaPath, 'utf-8')
+        const parsed = JSON.parse(raw)
+        if (!parsed || !Array.isArray(parsed.items)) return []
+        return parsed.items
+    } catch {
+        return []
+    }
+}
+
+const writeThumbMeta = (items) => {
+    ensureThumbStorage()
+    fs.writeFileSync(alertThumbMetaPath, JSON.stringify({ items }, null, 2), 'utf-8')
+}
+
+const addThumbMeta = (entry) => {
+    const items = readThumbMeta()
+    items.push(entry)
+    // keep only latest 3000 entries for safety
+    const next = items.slice(-3000)
+    writeThumbMeta(next)
+}
+
+const findThumbnailForReport = (patientEmail, createdAt) => {
+    const items = readThumbMeta().filter((item) => item.patient_email === patientEmail)
+    if (!items.length) return null
+    const targetTs = new Date(createdAt).getTime()
+    let best = null
+    let bestDelta = Number.POSITIVE_INFINITY
+    for (const item of items) {
+        const ts = new Date(item.created_at).getTime()
+        const delta = Math.abs(ts - targetTs)
+        if (Number.isFinite(delta) && delta < bestDelta) {
+            bestDelta = delta
+            best = item
+        }
+    }
+    // accept only close matches (15 seconds) to keep motion-thumbnail mapping accurate
+    if (!best || bestDelta > 15000) return null
+    return best.thumbnail_url || null
+}
 
 // sends an email when aggressive behavior is detected
 // Support both JSON posts and multipart/form-data with attachments.
@@ -177,7 +230,7 @@ router.post('/send_email', upload.fields([
 })
 
 // store abuse report to DB
-router.post('/send_report_to_db', async (req, res) => {
+router.post('/send_report_to_db', upload.single('thumbnail'), async (req, res) => {
     try {
         const { classification, reason, confidence, patient_email } = req.body || {}
 
@@ -199,12 +252,38 @@ router.post('/send_report_to_db', async (req, res) => {
         }
 
         // insert into abuse_reports table (assumes table exists with a foreign key to hackmars_users.email)
-        await sql`
+        const inserted = await sql`
             INSERT INTO public.caregiver_abuse_reports (classification, reason, confidence, patient_email, created_at)
             VALUES (${cls}, ${rsn}, ${conf}, ${patient_email}, now())
+            RETURNING created_at
         `
 
-        return res.status(200).json({ message: 'Report stored' })
+        const createdAt = inserted?.[0]?.created_at || new Date()
+        let thumbnailUrl = null
+
+        if (req.file) {
+            ensureThumbStorage()
+            const ext = path.extname(req.file.originalname || '').toLowerCase() || '.jpg'
+            const safeExt = ['.jpg', '.jpeg', '.png', '.webp'].includes(ext) ? ext : '.jpg'
+            const thumbName = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}${safeExt}`
+            const targetPath = path.join(alertThumbDir, thumbName)
+
+            try {
+                fs.renameSync(req.file.path, targetPath)
+            } catch {
+                fs.copyFileSync(req.file.path, targetPath)
+                fs.unlinkSync(req.file.path)
+            }
+
+            thumbnailUrl = `/uploads/alert-thumbs/${thumbName}`
+            addThumbMeta({
+                patient_email,
+                created_at: new Date(createdAt).toISOString(),
+                thumbnail_url: thumbnailUrl,
+            })
+        }
+
+        return res.status(200).json({ message: 'Report stored', created_at: createdAt, thumbnail_url: thumbnailUrl })
     } catch (err) {
         console.error('send_report_to_db error:', err)
         return res.status(500).json({ error: 'Failed to store report', details: err.message })
@@ -225,7 +304,12 @@ router.get('/get_reports', async (req, res) => {
             ORDER BY created_at DESC
         `
 
-        return res.status(200).json({ reports })
+        const reportsWithThumbs = (reports || []).map((report) => ({
+            ...report,
+            thumbnail_url: findThumbnailForReport(email, report.created_at),
+        }))
+
+        return res.status(200).json({ reports: reportsWithThumbs })
     } catch (err) {
         console.error('get_reports error:', err)
         return res.status(500).json({ error: 'Failed to fetch reports', details: err.message })

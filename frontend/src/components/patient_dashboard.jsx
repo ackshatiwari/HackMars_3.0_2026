@@ -94,6 +94,8 @@ function PatientDashboard() {
 	const medicalConditions = formatDisplayValue(displayUser.medical_conditions)
 	const emergencyPhoneContacts = toDisplayList(profile?.emergency_phone_contacts || displayUser.emergency_phone_contacts)
 	const emergencyEmailContacts = toDisplayList(profile?.emergency_email_contacts || displayUser.emergency_email_contacts)
+	const totalContactsConfigured = emergencyPhoneContacts.length + emergencyEmailContacts.length
+	const profileStatus = profile ? 'Synced' : 'Using local profile'
 
 	const loadTextFieldsForPhone = (event) => {
 		setLoadPhoneTextField(event.target.checked)
@@ -149,87 +151,130 @@ function PatientDashboard() {
 	}
 
 	return (
-		<div className='profile-dashboard pd-container'>
-			<aside className='pd-sidebar'>
-				<div className='pd-card pd-card-hero'>
-					<p className='pd-label'>Profile</p>
-					<h2 className='pd-username'>{displayUser.username}</h2>
-					{profileError ? <p className='pd-error'>{profileError}</p> : null}
+		<div className='dashboard-root dashboard-container'>
+			<aside className='dashboard-sidebar'>
+				<div className='dashboard-card dashboard-hero'>
+					<p className='dashboard-label'>Profile</p>
+					<h2 className='dashboard-username'>{displayUser.username}</h2>
+					{profileError ? <p className='dashboard-error'>{profileError}</p> : null}
 				</div>
 
-				<div className='pd-card-grid'>
-					<div className='pd-mini-card'>
-						<span className='pd-card-title'>Email</span>
-						<span className='pd-card-value'>{displayUser.email}</span>
+				<div className='dashboard-grid'>
+					<div className='dashboard-mini'>
+						<span className='dashboard-title'>Email</span>
+						<span className='dashboard-value'>{displayUser.email}</span>
 					</div>
-					<div className='pd-mini-card'>
-						<span className='pd-card-title'>Phone</span>
-						<span className='pd-card-value'>{displayUser.phone_number || 'Not provided'}</span>
+					<div className='dashboard-mini'>
+						<span className='dashboard-title'>Phone</span>
+						<span className='dashboard-value'>{displayUser.phone_number || 'Not provided'}</span>
 					</div>
-					<div className='pd-mini-card pd-mini-card-wide'>
-						<span className='pd-card-title'>Medical Conditions</span>
-						<span className='pd-card-value'>{medicalConditions}</span>
+					<div className='dashboard-mini dashboard-wide'>
+						<span className='dashboard-title'>Medical Conditions</span>
+						<span className='dashboard-value'>{medicalConditions}</span>
 					</div>
-					<div className='pd-mini-card'>
-						<span className='pd-card-title'>Emergency Phones</span>
-						<div className='pd-chip-list'>
+					<div className='dashboard-mini'>
+						<span className='dashboard-title'>Emergency Phones</span>
+						<div className='dashboard-chip-list'>
 							{emergencyPhoneContacts.length > 0 ? emergencyPhoneContacts.map((contact, index) => (
-								<span className='pd-chip' key={`${contact}-${index}`}>{contact}</span>
-							)) : <span className='pd-muted'>None added</span>}
+								<span className='dashboard-chip' key={`${contact}-${index}`}>{contact}</span>
+							)) : <span className='dashboard-muted'>None added</span>}
 						</div>
 					</div>
-					<div className='pd-mini-card'>
-						<span className='pd-card-title'>Emergency Emails</span>
-						<div className='pd-chip-list'>
+					<div className='dashboard-mini'>
+						<span className='dashboard-title'>Emergency Emails</span>
+						<div className='dashboard-chip-list'>
 							{emergencyEmailContacts.length > 0 ? emergencyEmailContacts.map((contact, index) => (
-								<span className='pd-chip' key={`${contact}-${index}`}>{contact}</span>
-							)) : <span className='pd-muted'>None added</span>}
+								<span className='dashboard-chip' key={`${contact}-${index}`}>{contact}</span>
+							)) : <span className='dashboard-muted'>None added</span>}
 						</div>
 					</div>
 				</div>
 			</aside>
 
-			<main className='pd-main'>
-				<div className='pd-actions'>
-					<button className='pd-start' onClick={() => setLoadUser(true)}>Proceed</button>
-					<button className='pd-settings-toggle' onClick={() => setShowSettings((prev) => !prev)}>
-						{showSettings ? 'Hide Settings' : 'Settings'}
-					</button>
-				</div>
-
-				{showSettings ? (
-					<section className='pd-settings-panel'>
-						<div className='pd-settings-card'>
-							<h3 className='pd-settings'>Profile Settings</h3>
-							<label className='checkbox-label'>
-								<input type="checkbox" /> Inform detector of my medical conditions for better analysis
-							</label>
-							<label className='checkbox-label'>
-								<input type="checkbox" id="distress-notification-phone" onChange={loadTextFieldsForPhone} /> Send a push notification to my loved one if I am detected to be in distress
-							</label>
-							{loadPhoneTextField && (
-								<div className='pd-textfield'>
-									<label htmlFor="phone-number" className='checkbox-label' id="phone-number-label">Emergency phone contact:</label>
-									<input type="text" id="phone-number" placeholder="Enter emergency phone" />
-								</div>
-							)}
-							<label className='checkbox-label'>
-								<input type="checkbox" id="distress-notification-email" onChange={loadTextFieldsForEmail} /> Send an email notification to my loved one if I am detected to be in distress
-							</label>
-							{loadEmailTextField && (
-								<div className='pd-textfield'>
-									<label htmlFor="email" className='checkbox-label' id="email-label">Emergency email contact:</label>
-									<input type="text" id="email" placeholder="Enter emergency email" />
-								</div>
-							)}
-							<button onClick={applyChanges}>Apply Changes</button>
+			<main className='dashboard-main'>
+				<div className='dashboard-right-stack'>
+					<div className='dashboard-card dashboard-actions-card'>
+						<div className='dashboard-actions'>
+							<button className='dashboard-start' onClick={() => setLoadUser(true)}>Begin Analysis</button>
+							<button className='dashboard-settings-toggle' onClick={() => setShowSettings((prev) => !prev)}>
+								{showSettings ? 'Hide Settings' : 'Settings'}
+							</button>
 						</div>
-					</section>
-				) : (
-					<div className='pd-empty'>
-						<p>Click "Settings" to view and update emergency contact preferences.</p>
+						<p className='dashboard-muted'>Click "Settings" to view and update emergency contact preferences.</p>
 					</div>
-				)}
+
+					{showSettings ? (
+						<section className='dashboard-settings-panel'>
+							<div className='dashboard-settings-card'>
+								<h3 className='dashboard-settings-title'>Profile Settings</h3>
+								<label className='checkbox-label'>
+									<input type="checkbox" /> Inform detector of my medical conditions for better analysis
+								</label>
+								<label className='checkbox-label'>
+									<input type="checkbox" id="distress-notification-phone" onChange={loadTextFieldsForPhone} /> Send a push notification to my loved one if I am detected to be in distress
+								</label>
+								{loadPhoneTextField && (
+									<div className='dashboard-textfield'>
+										<label htmlFor="phone-number" className='checkbox-label' id="phone-number-label">Emergency phone contact:</label>
+										<input type="text" id="phone-number" placeholder="Enter emergency phone" />
+									</div>
+								)}
+								<label className='checkbox-label'>
+									<input type="checkbox" id="distress-notification-email" onChange={loadTextFieldsForEmail} /> Send an email notification to my loved one if I am detected to be in distress
+								</label>
+								{loadEmailTextField && (
+									<div className='dashboard-textfield'>
+										<label htmlFor="email" className='checkbox-label' id="email-label">Emergency email contact:</label>
+										<input type="text" id="email" placeholder="Enter emergency email" />
+									</div>
+								)}
+								<button onClick={applyChanges}>Apply Changes</button>
+							</div>
+						</section>
+					) : (
+						<>
+							<div className='dashboard-card dashboard-summary-card'>
+								<h3 className='dashboard-section-title'>Quick Summary</h3>
+								<div className='dashboard-summary-grid'>
+									<div>
+										<p className='dashboard-summary-label'>Profile Status</p>
+										<p className='dashboard-summary-value'>{profileStatus}</p>
+									</div>
+									<div>
+										<p className='dashboard-summary-label'>Contacts Configured</p>
+										<p className='dashboard-summary-value'>{totalContactsConfigured}</p>
+									</div>
+									<div>
+										<p className='dashboard-summary-label'>Emergency Phones</p>
+										<p className='dashboard-summary-value'>{emergencyPhoneContacts.length}</p>
+									</div>
+									<div>
+										<p className='dashboard-summary-label'>Emergency Emails</p>
+										<p className='dashboard-summary-value'>{emergencyEmailContacts.length}</p>
+									</div>
+								</div>
+							</div>
+
+							<div className='dashboard-card dashboard-activity-card'>
+								<h3 className='dashboard-section-title'>Recent Activity</h3>
+								<ul className='dashboard-activity-list'>
+									<li>Profile loaded successfully</li>
+									<li>Emergency contacts synced from account</li>
+									<li>Open Settings to update notification preferences</li>
+								</ul>
+							</div>
+
+							<div className='dashboard-card dashboard-checklist-card'>
+								<h3 className='dashboard-section-title'>Safety Checklist</h3>
+								<ul className='dashboard-activity-list'>
+									<li>At least one emergency phone is added</li>
+									<li>At least one emergency email is added</li>
+									<li>Medical condition information is up to date</li>
+								</ul>
+							</div>
+						</>
+					)}
+				</div>
 			</main>
 		</div>
 	)

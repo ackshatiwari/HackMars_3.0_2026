@@ -1,0 +1,45 @@
+/* Compact overrides to reduce excessive vertical whitespace across pages */
+:root{
+  --compact-padding: 12px;
+}
+
+/* Reduce large global paddings and container heights */
+body{padding:0;margin:0;}
+
+/* make profile and other dashboard containers more compact */
+.dashboard-root.dashboard-container,
+.family-layout,
+.dashboard-container,
+.container-webcam{
+  max-width:1200px;
+  margin: 12px auto;
+  padding: var(--compact-padding) !important;
+}
+
+/* shorten big hero spacing */
+h1{margin:12px 0 8px;font-size:28px}
+h2{margin:8px 0 10px;font-size:20px}
+
+/* shrink cards and mini-cards so they take less vertical space */
+.dashboard-card, .dashboard-mini, .family-card, .card-gemini{
+  padding:10px !important;
+  border-radius:12px !important;
+}
+
+/* reduce webcam preview size to occupy less vertical space */
+#webcam{width:360px;height:240px}
+
+/* Main page compact grid to fill whitespace with useful cards */
+.main-compact-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:start}
+.action-column{display:flex;flex-direction:column;gap:10px}
+.action-button{padding:10px 14px;border-radius:999px}
+.filler-card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));padding:12px;border-radius:12px;color:var(--text);box-shadow:0 8px 18px rgba(0,0,0,0.15)}
+
+/* Make upload form inline and compact */
+#submit_footage{display:flex;gap:8px;align-items:center}
+#submit_footage input[type=file]{display:inline-block}
+
+@media (max-width:720px){
+  .main-compact-grid{grid-template-columns:1fr}
+  #webcam{width:100%;height:auto}
+}

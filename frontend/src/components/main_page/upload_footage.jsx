@@ -6,6 +6,14 @@ export default function UploadFootage() {
         event.preventDefault()
         const formData = new FormData(event.target)
 
+        // log selected file details for debugging
+        const fileInput = event.target.querySelector('input[type=file]')
+        if (fileInput && fileInput.files && fileInput.files.length > 0) {
+            const f = fileInput.files[0]
+            console.log('Uploading file:', { name: f.name, size: f.size, type: f.type })
+        } else {
+            console.log('No file selected')
+        }
         // call an endpoint called /api/footage/upload_footage with the form data
         const res = await fetch('/api/footage/upload_footage', {
             method: 'POST',

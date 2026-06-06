@@ -2,10 +2,13 @@ import { useState, useEffect } from 'react'
 import Auth from './components/auth'
 import PatientDashboard from './components/patient_dashboard'
 import FamilyDashboard from './components/family_dashboard'
+import LandingPage from './components/landing_page'
 import './App.css'
+// compact UI overrides to reduce whitespace
+import './styles/compact_overrides.css'
 
 function App() {
-  const [loadAuth, setLoadAuth] = useState(false)
+  const [activeView, setActiveView] = useState('landing')
   const [user, setUser] = useState(null)
 
   // read user from localStorage once on mount
@@ -26,23 +29,35 @@ function App() {
     }
   }, [])
 
-  const handleAuth = () => {
-    console.log('Auth button clicked')
-    setLoadAuth(true)
-  }
+  const handleOpenAuth = () => setActiveView('auth')
+  const handleViewProfile = () => setActiveView('dashboard')
+  const handleBackToLanding = () => setActiveView('landing')
 
   const normalizedRole = (user?.role || '').toString().toLowerCase()
+  const renderDashboard = normalizedRole === 'family' ? <FamilyDashboard /> : <PatientDashboard />
+
+  if (activeView === 'dashboard') {
+    return renderDashboard
+  }
+
+  if (activeView === 'auth') {
+    return (
+      <>
+        <div style={{ padding: '12px 16px' }}>
+          <button type="button" onClick={handleBackToLanding}>Back</button>
+        </div>
+        <Auth />
+      </>
+    )
+  }
 
   return (
-    <>
-      {user ? (
-        normalizedRole === 'family' ? <FamilyDashboard /> : <PatientDashboard />
-      ) : loadAuth ? (
-        <Auth />
-      ) : (
-        <button id="auth" onClick={handleAuth}>Login</button>
-      )}
-    </>
+    <LandingPage
+      isSignedIn={Boolean(user)}
+      user={user}
+      onSignIn={handleOpenAuth}
+      onViewProfile={handleViewProfile}
+    />
   )
 }
 

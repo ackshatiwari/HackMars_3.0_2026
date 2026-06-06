@@ -3,68 +3,71 @@
 }
 
 :root {
-    --navy: #08111d;
-    --navy-deep: #06111d;
-    --navy-mid: #0d1f33;
-    --lavender: #cfc8ff;
-    --lavender-soft: rgba(207, 200, 255, 0.14);
-    --coral: #ff7f6f;
-    --gold: #f4c76b;
-    --surface: rgba(13, 31, 51, 0.82);
-    --surface-strong: rgba(16, 37, 61, 0.94);
-    --border: rgba(207, 200, 255, 0.16);
-    --text: #f5f7fb;
-    --muted: #b7c2d4;
+    --navy: #07131f;
+    --navy-deep: #050c14;
+    --navy-mid: #11263b;
+    --lavender: #f4f7ff;
+    --lavender-soft: rgba(255, 255, 255, 0.12);
+    --coral: #ff896d;
+    --gold: #f1c96a;
+    --surface: rgba(255, 255, 255, 0.92);
+    --surface-strong: rgba(247, 250, 255, 0.98);
+    --border: rgba(7, 19, 31, 0.1);
+    --text: #102033;
+    --muted: #5e6f84;
 }
 
 body {
     background:
-        radial-gradient(circle at top left, rgba(207, 200, 255, 0.2), transparent 30%),
-        radial-gradient(circle at top right, rgba(244, 199, 107, 0.14), transparent 26%),
-        linear-gradient(180deg, var(--navy) 0%, var(--navy-mid) 45%, #132944 100%);
+        radial-gradient(circle at top left, rgba(255, 255, 255, 0.16), transparent 28%),
+        radial-gradient(circle at top right, rgba(241, 201, 106, 0.18), transparent 24%),
+        linear-gradient(180deg, #07131f 0%, #0f2236 45%, #17314c 100%);
     color: var(--text);
     font-family: Arial, sans-serif;
+    margin: 0;
 }
 
 .profile-dashboard.pd-container {
     min-height: 100vh;
     width: 100%;
-    max-width: 1200px;
+    max-width: 1600px;
     margin: 0 auto;
-    padding: 32px;
+    padding: 20px;
     display: flex;
-    gap: 24px;
+    gap: 18px;
     align-items: flex-start;
 }
 
 .pd-sidebar {
-    width: 420px;
-    flex: 0 0 420px;
+    width: 390px;
+    flex: 0 0 390px;
     display: flex;
     flex-direction: column;
-    gap: 18px;
+    gap: 14px;
 }
 
 .pd-main {
     flex: 1;
-    min-height: 240px;
-    padding: 8px 12px;
+    min-height: calc(100vh - 40px);
+    padding: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .pd-card,
 .pd-settings-card,
 .pd-empty,
 .pd-mini-card {
-    border-radius: 18px;
+    border-radius: 16px;
     background: linear-gradient(180deg, var(--surface-strong), var(--surface));
     border: 1px solid var(--border);
-    box-shadow: 0 18px 40px rgba(6, 17, 29, 0.28);
+    box-shadow: 0 18px 40px rgba(6, 17, 29, 0.16);
 }
 
 .pd-card,
 .pd-settings-card,
 .pd-empty {
-    padding: 20px;
+    padding: 16px;
 }
 
 .pd-card-hero {
@@ -83,8 +86,8 @@ body {
 
 .pd-username {
     margin: 0;
-    color: var(--lavender);
-    font-size: 28px;
+    color: #0e1e30;
+    font-size: 30px;
     letter-spacing: -0.03em;
 }
 
@@ -96,15 +99,15 @@ body {
 .pd-card-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
+    gap: 12px;
 }
 
 .pd-mini-card {
-    padding: 16px;
-    min-height: 110px;
+    padding: 14px;
+    min-height: 92px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 8px;
 }
 
 .pd-mini-card-wide {
@@ -112,7 +115,7 @@ body {
 }
 
 .pd-card-title {
-    color: var(--muted);
+    color: #46607a;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     font-size: 12px;
@@ -120,7 +123,7 @@ body {
 
 .pd-card-value {
     color: var(--text);
-    font-size: 15px;
+    font-size: 14px;
     line-height: 1.5;
     word-break: break-word;
 }
@@ -134,11 +137,11 @@ body {
 .pd-chip {
     display: inline-flex;
     align-items: center;
-    padding: 8px 10px;
+    padding: 7px 10px;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.06);
-    color: var(--text);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    background: rgba(17, 38, 59, 0.06);
+    color: #0e1e30;
+    border: 1px solid rgba(17, 38, 59, 0.08);
     font-size: 13px;
 }
 
@@ -148,7 +151,7 @@ body {
 }
 
 .pd-actions {
-    margin-bottom: 14px;
+    margin: 0 0 12px;
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
@@ -158,25 +161,25 @@ body {
 .pd-settings-toggle,
 .pd-settings-card button,
 .profile-dashboard button {
-    padding: 12px 18px;
-    font-size: 15px;
+    padding: 11px 16px;
+    font-size: 14px;
     font-weight: 700;
     cursor: pointer;
     border: none;
     border-radius: 999px;
-    color: var(--text);
-    background: linear-gradient(135deg, var(--navy-mid), #17395e);
+    color: #fff;
+    background: linear-gradient(135deg, #17395e, #224b74);
     box-shadow: 0 10px 22px rgba(6, 17, 29, 0.28);
     transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
 }
 
 .pd-start {
-    background: linear-gradient(135deg, var(--gold), #ffd98b);
-    color: var(--navy);
+    background: linear-gradient(135deg, var(--gold), #ffe39d);
+    color: #0b1724;
 }
 
 .pd-settings-toggle {
-    background: linear-gradient(135deg, var(--coral), #ff9a76);
+    background: linear-gradient(135deg, var(--coral), #ffa285);
 }
 
 .pd-start:hover,
@@ -188,16 +191,23 @@ body {
 }
 
 .pd-settings-panel {
-    margin-top: 8px;
+    margin-top: 0;
+    flex: 1;
 }
 
 .pd-settings {
-    margin: 0 0 14px;
-    color: var(--lavender);
+    margin: 0 0 12px;
+    color: #16314d;
+}
+
+.pd-settings-card {
+    min-height: calc(100vh - 90px);
+    display: flex;
+    flex-direction: column;
 }
 
 .pd-textfield {
-    margin: 10px 0 14px;
+    margin: 8px 0 12px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -205,17 +215,17 @@ body {
 
 .pd-textfield input {
     width: 100%;
-    padding: 12px 14px;
+    padding: 11px 12px;
     border-radius: 12px;
     border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.04);
+    background: rgba(17, 38, 59, 0.05);
     color: var(--text);
     outline: none;
 }
 
 .checkbox-label {
     display: block;
-    margin-bottom: 12px;
+    margin-bottom: 10px;
     color: var(--text);
     line-height: 1.5;
 }
@@ -228,7 +238,7 @@ body {
 @media (max-width: 920px) {
     .profile-dashboard.pd-container {
         flex-direction: column;
-        padding: 20px;
+        padding: 14px;
     }
 
     .pd-sidebar {
@@ -238,5 +248,9 @@ body {
 
     .pd-card-grid {
         grid-template-columns: 1fr;
+    }
+
+    .pd-settings-card {
+        min-height: auto;
     }
 }
